@@ -1,0 +1,7 @@
+start
+create library readme
+create function racismdetect()
+    return "You are racist"
+endfunction
+end
+  
