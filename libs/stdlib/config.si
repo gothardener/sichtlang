@@ -1,0 +1,197 @@
+﻿start
+create library config
+
+load library "strings"
+take string_split from strings
+take string_contains from strings
+take string_starts_with from strings
+take string_substring from strings
+take string_trim_text from strings
+
+create function config.parse.line(line)
+    set trimmed to string_trim_text(line)
+    if length(trimmed) is equal to 0 then
+        return {}
+    endif
+    if string_starts_with(trimmed, "#") or string_starts_with(trimmed, ";") then
+        return {}
+    endif
+    if string_contains(trimmed, "=") is equal to false then
+        return {}
+    endif
+
+    set parts to string_split(trimmed, "=")
+    if length(parts) is less than 2 then
+        return {}
+    endif
+
+    set key to string_trim_text(element 0 of(parts))
+    set value to string_trim_text(element 1 of(parts))
+    if length(parts) is greater than 2 then
+        set i to 2
+        while i is less than length(parts)
+            set value to value + "=" + element i of(parts)
+            set i to i + 1
+        endwhile
+        set value to string_trim_text(value)
+    endif
+
+    set entry to {}
+    add item "key": key to(entry)
+    add item "value": value to(entry)
+    return entry
+endfunction
+
+create function config.parse.text(text)
+    set cfg to {}
+    set lines to config.split.lines(text)
+    for each line in(lines)
+        set entry to config.parse.line(line)
+        if "key" in(entry) then
+            add item get item "key" from(entry): get item "value" from(entry) to(cfg)
+        endif
+    endfor
+    return cfg
+endfunction
+
+create function config.is.line.break(ch)
+    if ch in("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 !@#$%^&*()-_=+[]{};:',.<>/?|") then
+        return false
+    endif
+    return true
+endfunction
+
+create function config.split.lines(text)
+    set lines to []
+    set current to ""
+    set i to 0
+    set n to length(text)
+    set last_was_break to false
+    while i is less than n
+        set ch to character i of(text)
+        if config.is.line.break(ch) then
+            if last_was_break is equal to false then
+                add current to(lines)
+                set current to ""
+            endif
+            set last_was_break to true
+        otherwise
+            set current to current + ch
+            set last_was_break to false
+        endif
+        set i to i + 1
+    endwhile
+    add current to(lines)
+    return lines
+endfunction
+
+create function config.read.file(path)
+    return config.parse.text(read file path)
+endfunction
+
+create function config.to.text(config_values)
+    set lines to []
+    for each key in(config_values)
+        add key + "=" + get item key from(config_values) to(lines)
+    endfor
+
+    set out to ""
+    set first to true
+    for each line in(lines)
+        if first is equal to false then
+            set out to out + " | "
+        endif
+        set first to false
+        set out to out + line
+    endfor
+    return out
+endfunction
+
+create function config.write.file(path, config_values)
+    write file path to config.to.text(config_values)
+    return true
+endfunction
+
+create function config.has(config_values, key)
+    return key in(config_values)
+endfunction
+
+create function config.get(config_values, key, default_value)
+    if key in(config_values) then
+        return get item key from(config_values)
+    endif
+    return default_value
+endfunction
+
+create function config.require(config_values, key)
+    if key in(config_values) then
+        return get item key from(config_values)
+    endif
+    return ""
+endfunction
+
+create function config.merge(base_config, override_config)
+    set out to {}
+    for each key in(base_config)
+        add item key: get item key from(base_config) to(out)
+    endfor
+    for each key in(override_config)
+        add item key: get item key from(override_config) to(out)
+    endfor
+    return out
+endfunction
+
+offer config.parse.line
+offer config.parse.text
+offer config.read.file
+offer config.to.text
+offer config.write.file
+offer config.has
+offer config.get
+offer config.require
+offer config.merge
+
+# underscore compatibility aliases
+create function config_parse_line(line)
+    return config.parse.line(line)
+endfunction
+offer config_parse_line
+create function config_parse_text(text)
+    return config.parse.text(text)
+endfunction
+offer config_parse_text
+create function config_is_line_break(ch)
+    return config.is.line.break(ch)
+endfunction
+create function config_split_lines(text)
+    return config.split.lines(text)
+endfunction
+create function config_read_file(path)
+    return config.read.file(path)
+endfunction
+offer config_read_file
+create function config_to_text(config_values)
+    return config.to.text(config_values)
+endfunction
+offer config_to_text
+create function config_write_file(path, config_values)
+    return config.write.file(path, config_values)
+endfunction
+offer config_write_file
+create function config_has(config_values, key)
+    return config.has(config_values, key)
+endfunction
+offer config_has
+create function config_get(config_values, key, default_value)
+    return config.get(config_values, key, default_value)
+endfunction
+offer config_get
+create function config_require(config_values, key)
+    return config.require(config_values, key)
+endfunction
+offer config_require
+create function config_merge(base_config, override_config)
+    return config.merge(base_config, override_config)
+endfunction
+offer config_merge
+end

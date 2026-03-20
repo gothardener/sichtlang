@@ -1,0 +1,190 @@
+﻿start
+create library io
+
+load library "json"
+take parse_json from json
+take stringify_json from json
+
+load library "csv"
+take read_csv_rows from csv
+take read_csv_table from csv
+take write_csv_rows from csv
+take write_csv_table from csv
+
+create function read.text.file(path)
+    return read file path
+endfunction
+
+create function write.text.file(path, text)
+    write file path to text
+    return true
+endfunction
+
+create function append.text.file(path, text)
+    append file path to text
+    return true
+endfunction
+
+create function io.read_file(path)
+    return read file path
+endfunction
+
+create function io.write_file(path, text)
+    write file path to text
+    return true
+endfunction
+
+create function io.append_file(path, text)
+    append file path to text
+    return true
+endfunction
+
+create function file.exists(path)
+    try
+        set _probe to read file path
+        return true
+    otherwise
+        return false
+    endtry
+endfunction
+
+create function io.file_exists(path)
+    return file.exists(path)
+endfunction
+
+create function io.directory_exists(path)
+    return native.io.directory_exists(path)
+endfunction
+
+create function io.create_directory(path)
+    return native.io.create_directory(path)
+endfunction
+
+create function io.list_directories(path)
+    return native.io.list_directories(path)
+endfunction
+
+create function io.list_files(path)
+    return native.io.list_files(path)
+endfunction
+
+create function io.remove_directory(path)
+    return native.io.remove_directory(path)
+endfunction
+
+create function io.delete_file(path)
+    return native.io.delete_file(path)
+endfunction
+
+create function io.copy_file(src_path, dst_path)
+    return native.io.copy_file(src_path, dst_path)
+endfunction
+
+create function io.copy_directory(src_path, dst_path)
+    return native.io.copy_directory(src_path, dst_path)
+endfunction
+
+create function read.json.file(path)
+    return parse_json(read file path)
+endfunction
+
+create function write.json.file(path, json_node)
+    write file path to stringify_json(json_node)
+    return true
+endfunction
+
+create function read.csv.rows.file(path)
+    return read_csv_rows(path)
+endfunction
+
+create function read.csv.table.file(path)
+    return read_csv_table(path)
+endfunction
+
+create function write.csv.rows.file(path, rows)
+    write_csv_rows(path, rows)
+    return true
+endfunction
+
+create function write.csv.table.file(path, rows)
+    write_csv_table(path, rows)
+    return true
+endfunction
+
+offer read.text.file
+offer write.text.file
+offer append.text.file
+offer io.read_file
+offer io.write_file
+offer io.append_file
+offer file.exists
+offer io.file_exists
+offer io.directory_exists
+offer io.create_directory
+offer io.list_directories
+offer io.list_files
+offer io.remove_directory
+offer io.delete_file
+offer io.copy_file
+offer io.copy_directory
+offer read.json.file
+offer write.json.file
+offer read.csv.rows.file
+offer read.csv.table.file
+offer write.csv.rows.file
+offer write.csv.table.file
+
+# underscore compatibility aliases
+create function read_text_file(path)
+    return read.text.file(path)
+endfunction
+offer read_text_file
+create function write_text_file(path, text)
+    return write.text.file(path, text)
+endfunction
+offer write_text_file
+create function append_text_file(path, text)
+    return append.text.file(path, text)
+endfunction
+offer append_text_file
+create function file_exists(path)
+    return file.exists(path)
+endfunction
+offer file_exists
+create function io_list_files(path)
+    return io.list_files(path)
+endfunction
+offer io_list_files
+create function io_copy_file(src_path, dst_path)
+    return io.copy_file(src_path, dst_path)
+endfunction
+offer io_copy_file
+create function io_copy_directory(src_path, dst_path)
+    return io.copy_directory(src_path, dst_path)
+endfunction
+offer io_copy_directory
+create function read_json_file(path)
+    return read.json.file(path)
+endfunction
+offer read_json_file
+create function write_json_file(path, json_node)
+    return write.json.file(path, json_node)
+endfunction
+offer write_json_file
+create function read_csv_rows_file(path)
+    return read.csv.rows.file(path)
+endfunction
+offer read_csv_rows_file
+create function read_csv_table_file(path)
+    return read.csv.table.file(path)
+endfunction
+offer read_csv_table_file
+create function write_csv_rows_file(path, rows)
+    return write.csv.rows.file(path, rows)
+endfunction
+offer write_csv_rows_file
+create function write_csv_table_file(path, rows)
+    return write.csv.table.file(path, rows)
+endfunction
+offer write_csv_table_file
+end

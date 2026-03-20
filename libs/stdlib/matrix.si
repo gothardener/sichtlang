@@ -1,0 +1,694 @@
+﻿start
+create library matrix
+
+load library "math"
+take abs from math
+take squareroot from math
+take epsilon from math
+
+create function mat.rows(m)
+    return length of(m)
+endfunction
+
+create function mat.cols(m)
+    if mat.rows(m) is equal to 0 then
+        return 0
+    endif
+    return length of(element 0 of(m))
+endfunction
+
+create function mat.shape(m)
+    return [mat.rows(m), mat.cols(m)]
+endfunction
+
+create function mat.is.rectangular(m)
+    set r to mat.rows(m)
+    if r is equal to 0 then
+        return true
+    endif
+    set c to length of(element 0 of(m))
+    set i to 1
+    while i is less than r
+        if length of(element i of(m)) is not equal to c then
+            return false
+        endif
+        set i to i + 1
+    endwhile
+    return true
+endfunction
+
+create function mat.copy(m)
+    set out to []
+    for each row in(m)
+        set row_out to []
+        for each v in(row)
+            add cast v to float to(row_out)
+        endfor
+        add row_out to(out)
+    endfor
+    return out
+endfunction
+
+create function mat.fill(r, c, value)
+    set rr to cast r to int
+    set cc to cast c to int
+    set out to []
+    if rr is less than 0 or cc is less than 0 then
+        return out
+    endif
+    set val to cast value to float
+    repeat rr times
+        set row to []
+        repeat cc times
+            add val to(row)
+        endrepeat
+        add row to(out)
+    endrepeat
+    return out
+endfunction
+
+create function mat.zeros(r, c)
+    return mat.fill(r, c, 0.0)
+endfunction
+
+create function mat.ones(r, c)
+    return mat.fill(r, c, 1.0)
+endfunction
+
+create function mat.identity(n)
+    set size to cast n to int
+    if size is less than 0 then
+        return []
+    endif
+    set out to mat.zeros(size, size)
+    set i to 0
+    while i is less than size
+        set row to element i of(out)
+        set element i of(row) to 1.0
+        set element i of(out) to row
+        set i to i + 1
+    endwhile
+    return out
+endfunction
+
+create function mat.diagonal(values)
+    set n to length of(values)
+    set out to mat.zeros(n, n)
+    set i to 0
+    while i is less than n
+        set row to element i of(out)
+        set element i of(row) to cast element i of(values) to float
+        set element i of(out) to row
+        set i to i + 1
+    endwhile
+    return out
+endfunction
+
+create function mat.transpose(m)
+    if mat.is.rectangular(m) is equal to false then
+        return []
+    endif
+    set r to mat.rows(m)
+    set c to mat.cols(m)
+    set out to mat.zeros(c, r)
+    set i to 0
+    while i is less than r
+        set j to 0
+        while j is less than c
+            set row_out to element j of(out)
+            set element i of(row_out) to cast element j of(element i of(m)) to float
+            set element j of(out) to row_out
+            set j to j + 1
+        endwhile
+        set i to i + 1
+    endwhile
+    return out
+endfunction
+
+create function mat.add(a, b)
+    if mat.is.rectangular(a) is equal to false or mat.is.rectangular(b) is equal to false then
+        return []
+    endif
+    if mat.rows(a) is not equal to mat.rows(b) or mat.cols(a) is not equal to mat.cols(b) then
+        return []
+    endif
+    set r to mat.rows(a)
+    set c to mat.cols(a)
+    set out to mat.zeros(r, c)
+    set i to 0
+    while i is less than r
+        set j to 0
+        while j is less than c
+            set av to cast element j of(element i of(a)) to float
+            set bv to cast element j of(element i of(b)) to float
+            set row_out to element i of(out)
+            set element j of(row_out) to av + bv
+            set element i of(out) to row_out
+            set j to j + 1
+        endwhile
+        set i to i + 1
+    endwhile
+    return out
+endfunction
+
+create function mat.sub(a, b)
+    if mat.is.rectangular(a) is equal to false or mat.is.rectangular(b) is equal to false then
+        return []
+    endif
+    if mat.rows(a) is not equal to mat.rows(b) or mat.cols(a) is not equal to mat.cols(b) then
+        return []
+    endif
+    set r to mat.rows(a)
+    set c to mat.cols(a)
+    set out to mat.zeros(r, c)
+    set i to 0
+    while i is less than r
+        set j to 0
+        while j is less than c
+            set av to cast element j of(element i of(a)) to float
+            set bv to cast element j of(element i of(b)) to float
+            set row_out to element i of(out)
+            set element j of(row_out) to av - bv
+            set element i of(out) to row_out
+            set j to j + 1
+        endwhile
+        set i to i + 1
+    endwhile
+    return out
+endfunction
+
+create function mat.scale(m, s)
+    if mat.is.rectangular(m) is equal to false then
+        return []
+    endif
+    set r to mat.rows(m)
+    set c to mat.cols(m)
+    set sv to cast s to float
+    set out to mat.zeros(r, c)
+    set i to 0
+    while i is less than r
+        set j to 0
+        while j is less than c
+            set vv to cast element j of(element i of(m)) to float
+            set row_out to element i of(out)
+            set element j of(row_out) to vv * sv
+            set element i of(out) to row_out
+            set j to j + 1
+        endwhile
+        set i to i + 1
+    endwhile
+    return out
+endfunction
+
+create function mat.multiply(a, b)
+    if mat.is.rectangular(a) is equal to false or mat.is.rectangular(b) is equal to false then
+        return []
+    endif
+    set ra to mat.rows(a)
+    set ca to mat.cols(a)
+    set rb to mat.rows(b)
+    set cb to mat.cols(b)
+    if ca is not equal to rb then
+        return []
+    endif
+
+    set out to mat.zeros(ra, cb)
+    set i to 0
+    while i is less than ra
+        set j to 0
+        while j is less than cb
+            set total to 0.0
+            set k to 0
+            while k is less than ca
+                set av to cast element k of(element i of(a)) to float
+                set bv to cast element j of(element k of(b)) to float
+                set total to total + av * bv
+                set k to k + 1
+            endwhile
+            set row_out to element i of(out)
+            set element j of(row_out) to total
+            set element i of(out) to row_out
+            set j to j + 1
+        endwhile
+        set i to i + 1
+    endwhile
+    return out
+endfunction
+
+create function mat.multiply.vector(m, v)
+    if mat.is.rectangular(m) is equal to false then
+        return []
+    endif
+    if mat.cols(m) is not equal to length of(v) then
+        return []
+    endif
+    set out to []
+    set r to mat.rows(m)
+    set c to mat.cols(m)
+    set i to 0
+    while i is less than r
+        set total to 0.0
+        set j to 0
+        while j is less than c
+            set mv to cast element j of(element i of(m)) to float
+            set vv to cast element j of(v) to float
+            set total to total + mv * vv
+            set j to j + 1
+        endwhile
+        add total to(out)
+        set i to i + 1
+    endwhile
+    return out
+endfunction
+
+create function mat.trace(m)
+    if mat.is.rectangular(m) is equal to false then
+        return 0.0
+    endif
+    if mat.rows(m) is not equal to mat.cols(m) then
+        return 0.0
+    endif
+    set n to mat.rows(m)
+    set total to 0.0
+    set i to 0
+    while i is less than n
+        set total to total + cast element i of(element i of(m)) to float
+        set i to i + 1
+    endwhile
+    return total
+endfunction
+
+create function mat.determinant2(m)
+    if mat.is.rectangular(m) is equal to false then
+        return 0.0
+    endif
+    if mat.rows(m) is not equal to 2 or mat.cols(m) is not equal to 2 then
+        return 0.0
+    endif
+    set a to cast element 0 of(element 0 of(m)) to float
+    set b to cast element 1 of(element 0 of(m)) to float
+    set c to cast element 0 of(element 1 of(m)) to float
+    set d to cast element 1 of(element 1 of(m)) to float
+    return a * d - b * c
+endfunction
+
+create function mat.determinant3(m)
+    if mat.is.rectangular(m) is equal to false then
+        return 0.0
+    endif
+    if mat.rows(m) is not equal to 3 or mat.cols(m) is not equal to 3 then
+        return 0.0
+    endif
+
+    set a00 to cast element 0 of(element 0 of(m)) to float
+    set a01 to cast element 1 of(element 0 of(m)) to float
+    set a02 to cast element 2 of(element 0 of(m)) to float
+    set a10 to cast element 0 of(element 1 of(m)) to float
+    set a11 to cast element 1 of(element 1 of(m)) to float
+    set a12 to cast element 2 of(element 1 of(m)) to float
+    set a20 to cast element 0 of(element 2 of(m)) to float
+    set a21 to cast element 1 of(element 2 of(m)) to float
+    set a22 to cast element 2 of(element 2 of(m)) to float
+
+    return a00 * (a11 * a22 - a12 * a21) - a01 * (a10 * a22 - a12 * a20) + a02 * (a10 * a21 - a11 * a20)
+endfunction
+
+create function mat.frobenius.norm(m)
+    if mat.is.rectangular(m) is equal to false then
+        return 0.0
+    endif
+    set total to 0.0
+    for each row in(m)
+        for each v in(row)
+            set fv to cast v to float
+            set total to total + fv * fv
+        endfor
+    endfor
+    return squareroot(total)
+endfunction
+
+create function mat.almost.equal(a, b, tol)
+    if mat.is.rectangular(a) is equal to false or mat.is.rectangular(b) is equal to false then
+        return false
+    endif
+    if mat.rows(a) is not equal to mat.rows(b) or mat.cols(a) is not equal to mat.cols(b) then
+        return false
+    endif
+    set tv to abs(cast tol to float)
+    set r to mat.rows(a)
+    set c to mat.cols(a)
+    set i to 0
+    while i is less than r
+        set j to 0
+        while j is less than c
+            set av to cast element j of(element i of(a)) to float
+            set bv to cast element j of(element i of(b)) to float
+            if abs(av - bv) is greater than tv then
+                return false
+            endif
+            set j to j + 1
+        endwhile
+        set i to i + 1
+    endwhile
+    return true
+endfunction
+
+create function mat.is.identity(m, tol)
+    if mat.is.rectangular(m) is equal to false then
+        return false
+    endif
+    set n to mat.rows(m)
+    if n is not equal to mat.cols(m) then
+        return false
+    endif
+    set tv to abs(cast tol to float)
+    set i to 0
+    while i is less than n
+        set j to 0
+        while j is less than n
+            set expected to 0.0
+            if i is equal to j then
+                set expected to 1.0
+            endif
+            set vv to cast element j of(element i of(m)) to float
+            if abs(vv - expected) is greater than tv then
+                return false
+            endif
+            set j to j + 1
+        endwhile
+        set i to i + 1
+    endwhile
+    return true
+endfunction
+
+create function matrix.rows(m)
+    return mat.rows(m)
+endfunction
+
+create function matrix.columns(m)
+    return mat.cols(m)
+endfunction
+
+create function matrix.shape(m)
+    return mat.shape(m)
+endfunction
+
+create function matrix.is.rectangular(m)
+    return mat.is.rectangular(m)
+endfunction
+
+create function matrix.copy(m)
+    return mat.copy(m)
+endfunction
+
+create function matrix.fill(rows, cols, value)
+    return mat.fill(rows, cols, value)
+endfunction
+
+create function matrix.zeros(rows, cols)
+    return mat.zeros(rows, cols)
+endfunction
+
+create function matrix.ones(rows, cols)
+    return mat.ones(rows, cols)
+endfunction
+
+create function matrix.identity(size)
+    return mat.identity(size)
+endfunction
+
+create function matrix.diagonal(values)
+    return mat.diagonal(values)
+endfunction
+
+create function matrix.transpose(m)
+    return mat.transpose(m)
+endfunction
+
+create function matrix.add(a, b)
+    return mat.add(a, b)
+endfunction
+
+create function matrix.subtract(a, b)
+    return mat.sub(a, b)
+endfunction
+
+create function matrix.scale(m, scalar)
+    return mat.scale(m, scalar)
+endfunction
+
+create function matrix.multiply(a, b)
+    return mat.multiply(a, b)
+endfunction
+
+create function matrix.multiply.vector(m, v)
+    return mat.multiply.vector(m, v)
+endfunction
+
+create function matrix.trace(m)
+    return mat.trace(m)
+endfunction
+
+create function matrix.determinant.2x2(m)
+    return mat.determinant2(m)
+endfunction
+
+create function matrix.determinant.3x3(m)
+    return mat.determinant3(m)
+endfunction
+
+create function matrix.frobenius.norm(m)
+    return mat.frobenius.norm(m)
+endfunction
+
+create function matrix.almost.equal(a, b, tolerance)
+    return mat.almost.equal(a, b, tolerance)
+endfunction
+
+create function matrix.is.identity(m, tolerance)
+    return mat.is.identity(m, tolerance)
+endfunction
+
+offer mat.rows
+offer mat.cols
+offer mat.shape
+offer mat.is.rectangular
+offer mat.copy
+offer mat.fill
+offer mat.zeros
+offer mat.ones
+offer mat.identity
+offer mat.diagonal
+offer mat.transpose
+offer mat.add
+offer mat.sub
+offer mat.scale
+offer mat.multiply
+offer mat.multiply.vector
+offer mat.trace
+offer mat.determinant2
+offer mat.determinant3
+offer mat.frobenius.norm
+offer mat.almost.equal
+offer mat.is.identity
+offer matrix.rows
+offer matrix.columns
+offer matrix.shape
+offer matrix.is.rectangular
+offer matrix.copy
+offer matrix.fill
+offer matrix.zeros
+offer matrix.ones
+offer matrix.identity
+offer matrix.diagonal
+offer matrix.transpose
+offer matrix.add
+offer matrix.subtract
+offer matrix.scale
+offer matrix.multiply
+offer matrix.multiply.vector
+offer matrix.trace
+offer matrix.determinant.2x2
+offer matrix.determinant.3x3
+offer matrix.frobenius.norm
+offer matrix.almost.equal
+offer matrix.is.identity
+
+# underscore compatibility aliases
+create function mat_rows(m)
+    return mat.rows(m)
+endfunction
+offer mat_rows
+create function mat_cols(m)
+    return mat.cols(m)
+endfunction
+offer mat_cols
+create function mat_shape(m)
+    return mat.shape(m)
+endfunction
+offer mat_shape
+create function mat_is_rectangular(m)
+    return mat.is.rectangular(m)
+endfunction
+offer mat_is_rectangular
+create function mat_copy(m)
+    return mat.copy(m)
+endfunction
+offer mat_copy
+create function mat_fill(r, c, value)
+    return mat.fill(r, c, value)
+endfunction
+offer mat_fill
+create function mat_zeros(r, c)
+    return mat.zeros(r, c)
+endfunction
+offer mat_zeros
+create function mat_ones(r, c)
+    return mat.ones(r, c)
+endfunction
+offer mat_ones
+create function mat_identity(n)
+    return mat.identity(n)
+endfunction
+offer mat_identity
+create function mat_diagonal(values)
+    return mat.diagonal(values)
+endfunction
+offer mat_diagonal
+create function mat_transpose(m)
+    return mat.transpose(m)
+endfunction
+offer mat_transpose
+create function mat_add(a, b)
+    return mat.add(a, b)
+endfunction
+offer mat_add
+create function mat_sub(a, b)
+    return mat.sub(a, b)
+endfunction
+offer mat_sub
+create function mat_scale(m, s)
+    return mat.scale(m, s)
+endfunction
+offer mat_scale
+create function mat_multiply(a, b)
+    return mat.multiply(a, b)
+endfunction
+offer mat_multiply
+create function mat_multiply_vector(m, v)
+    return mat.multiply.vector(m, v)
+endfunction
+offer mat_multiply_vector
+create function mat_trace(m)
+    return mat.trace(m)
+endfunction
+offer mat_trace
+create function mat_determinant2(m)
+    return mat.determinant2(m)
+endfunction
+offer mat_determinant2
+create function mat_determinant3(m)
+    return mat.determinant3(m)
+endfunction
+offer mat_determinant3
+create function mat_frobenius_norm(m)
+    return mat.frobenius.norm(m)
+endfunction
+offer mat_frobenius_norm
+create function mat_almost_equal(a, b, tol)
+    return mat.almost.equal(a, b, tol)
+endfunction
+offer mat_almost_equal
+create function mat_is_identity(m, tol)
+    return mat.is.identity(m, tol)
+endfunction
+offer mat_is_identity
+create function matrix_rows(m)
+    return matrix.rows(m)
+endfunction
+offer matrix_rows
+create function matrix_columns(m)
+    return matrix.columns(m)
+endfunction
+offer matrix_columns
+create function matrix_shape(m)
+    return matrix.shape(m)
+endfunction
+offer matrix_shape
+create function matrix_is_rectangular(m)
+    return matrix.is.rectangular(m)
+endfunction
+offer matrix_is_rectangular
+create function matrix_copy(m)
+    return matrix.copy(m)
+endfunction
+offer matrix_copy
+create function matrix_fill(rows, cols, value)
+    return matrix.fill(rows, cols, value)
+endfunction
+offer matrix_fill
+create function matrix_zeros(rows, cols)
+    return matrix.zeros(rows, cols)
+endfunction
+offer matrix_zeros
+create function matrix_ones(rows, cols)
+    return matrix.ones(rows, cols)
+endfunction
+offer matrix_ones
+create function matrix_identity(size)
+    return matrix.identity(size)
+endfunction
+offer matrix_identity
+create function matrix_diagonal(values)
+    return matrix.diagonal(values)
+endfunction
+offer matrix_diagonal
+create function matrix_transpose(m)
+    return matrix.transpose(m)
+endfunction
+offer matrix_transpose
+create function matrix_add(a, b)
+    return matrix.add(a, b)
+endfunction
+offer matrix_add
+create function matrix_subtract(a, b)
+    return matrix.subtract(a, b)
+endfunction
+offer matrix_subtract
+create function matrix_scale(m, scalar)
+    return matrix.scale(m, scalar)
+endfunction
+offer matrix_scale
+create function matrix_multiply(a, b)
+    return matrix.multiply(a, b)
+endfunction
+offer matrix_multiply
+create function matrix_multiply_vector(m, v)
+    return matrix.multiply.vector(m, v)
+endfunction
+offer matrix_multiply_vector
+create function matrix_trace(m)
+    return matrix.trace(m)
+endfunction
+offer matrix_trace
+create function matrix_determinant_2x2(m)
+    return matrix.determinant.2x2(m)
+endfunction
+offer matrix_determinant_2x2
+create function matrix_determinant_3x3(m)
+    return matrix.determinant.3x3(m)
+endfunction
+offer matrix_determinant_3x3
+create function matrix_frobenius_norm(m)
+    return matrix.frobenius.norm(m)
+endfunction
+offer matrix_frobenius_norm
+create function matrix_almost_equal(a, b, tolerance)
+    return matrix.almost.equal(a, b, tolerance)
+endfunction
+offer matrix_almost_equal
+create function matrix_is_identity(m, tolerance)
+    return matrix.is.identity(m, tolerance)
+endfunction
+offer matrix_is_identity
+end

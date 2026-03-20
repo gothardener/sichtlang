@@ -1,0 +1,832 @@
+﻿start
+create library math
+
+set pi to 3.141592653589793
+set tau to 6.283185307179586
+set e to 2.718281828459045
+set epsilon to 0.000000000001
+
+create function square(x)
+    return x * x
+endfunction
+
+create function cube(x)
+    return x * x * x
+endfunction
+
+create function abs(x)
+    set fx to cast x to float
+    if fx is less than 0.0 then
+        return -fx
+    endif
+    return fx
+endfunction
+
+create function min(a, b)
+    if a is less than b then
+        return a
+    endif
+    return b
+endfunction
+
+create function max(a, b)
+    if a is greater than b then
+        return a
+    endif
+    return b
+endfunction
+
+create function clamp(x, lo, hi)
+    if x is less than lo then
+        return lo
+    endif
+    if x is greater than hi then
+        return hi
+    endif
+    return x
+endfunction
+
+create function average(a, b)
+    return (a + b) / 2
+endfunction
+
+create function midpoint(a, b)
+    return (a + b) / 2
+endfunction
+
+create function distance(a, b)
+    return abs(a - b)
+endfunction
+
+create function sign(x)
+    set fx to cast x to float
+    if fx is greater than 0.0 then
+        return 1
+    endif
+    if fx is less than 0.0 then
+        return -1
+    endif
+    return 0
+endfunction
+
+create function lerp(a, b, t)
+    return a + (b - a) * t
+endfunction
+
+create function mod(a, b)
+    set ai to cast a to int
+    set bi to cast b to int
+    if bi is equal to 0 then
+        return 0
+    endif
+    set q to ai / bi
+    return ai - q * bi
+endfunction
+
+create function floor(x)
+    set fx to cast x to float
+    set n to cast fx to int
+    set nf to cast n to float
+    if nf is greater than fx then
+        return n - 1
+    endif
+    return n
+endfunction
+
+create function ceil(x)
+    set fx to cast x to float
+    set n to cast fx to int
+    set nf to cast n to float
+    if nf is less than fx then
+        return n + 1
+    endif
+    return n
+endfunction
+
+create function round(x)
+    set fx to cast x to float
+    if fx is greater than 0.0 then
+        return floor(fx + 0.5)
+    endif
+    return ceil(fx - 0.5)
+endfunction
+
+create function factorial(n)
+    set ni to cast n to int
+    if ni is less than 0 then
+        return 0
+    endif
+    set result to 1
+    set i to 1
+    while i is less than ni + 1
+        set result to result * i
+        set i to i + 1
+    endwhile
+    return result
+endfunction
+
+create function inverse(x)
+    set fx to cast x to float
+    if abs(fx) is less than epsilon then
+        return 0.0
+    endif
+    return 1.0 / fx
+endfunction
+
+create function percentage(value, total)
+    set v to cast value to float
+    set t to cast total to float
+    if abs(t) is less than epsilon then
+        return 0.0
+    endif
+    return (v / t) * 100.0
+endfunction
+
+create function approach(value, target, step)
+    set v to cast value to float
+    set t to cast target to float
+    set s to abs(cast step to float)
+    if v is less than t then
+        return min(v + s, t)
+    endif
+    return max(v - s, t)
+endfunction
+
+create function normalize(value, lo, hi)
+    set v to cast value to float
+    set a to cast lo to float
+    set b to cast hi to float
+    set d to b - a
+    if abs(d) is less than epsilon then
+        return 0.0
+    endif
+    return (v - a) / d
+endfunction
+
+create function map(value, in_min, in_max, out_min, out_max)
+    set t to normalize(value, in_min, in_max)
+    return cast out_min to float + t * (cast out_max to float - cast out_min to float)
+endfunction
+
+create function between(value, lo, hi)
+    set v to cast value to float
+    set a to cast lo to float
+    set b to cast hi to float
+    if v is greater than or equal to a and v is less than or equal to b then
+        return true
+    endif
+    return false
+endfunction
+
+create function wrap(value, lo, hi)
+    set v to cast value to float
+    set a to cast lo to float
+    set b to cast hi to float
+    set range to b - a
+    if abs(range) is less than epsilon then
+        return a
+    endif
+    set k to floor((v - a) / range)
+    return a + ((v - a) - cast k to float * range)
+endfunction
+
+create function step(edge, x)
+    set e0 to cast edge to float
+    set xx to cast x to float
+    if xx is less than e0 then
+        return 0.0
+    endif
+    return 1.0
+endfunction
+
+create function smoothstep(a, b, x)
+    set lo to cast a to float
+    set hi to cast b to float
+    set xx to cast x to float
+    set t to normalize(xx, lo, hi)
+    set t to clamp(t, 0.0, 1.0)
+    return t * t * (3.0 - 2.0 * t)
+endfunction
+
+create function power(a, b)
+    set base to cast a to float
+    set expn to cast b to int
+    if expn is equal to 0 then
+        return 1.0
+    endif
+    set neg to false
+    if expn is less than 0 then
+        set neg to true
+        set expn to -expn
+    endif
+    set result to 1.0
+    repeat expn times
+        set result to result * base
+    endrepeat
+    if neg then
+        if abs(result) is less than epsilon then
+            return 0.0
+        endif
+        return 1.0 / result
+    endif
+    return result
+endfunction
+
+create function squareroot(x)
+    set fx to cast x to float
+    if fx is less than 0.0 then
+        return 0.0
+    endif
+    if fx is equal to 0.0 then
+        return 0.0
+    endif
+    set g to fx
+    if g is less than 1.0 then
+        set g to 1.0
+    endif
+    repeat 24 times
+        set g to 0.5 * (g + fx / g)
+    endrepeat
+    return g
+endfunction
+
+create function exp(x)
+    set fx to cast x to float
+    if fx is equal to 0.0 then
+        return 1.0
+    endif
+    if fx is less than 0.0 then
+        return 1.0 / exp(-fx)
+    endif
+
+    set y to fx
+    set squarings to 0
+    while y is greater than 0.5
+        set y to y / 2.0
+        set squarings to squarings + 1
+    endwhile
+
+    set term to 1.0
+    set result to 1.0
+    set i to 1
+    repeat 30 times
+        set term to term * y / cast i to float
+        set result to result + term
+        set i to i + 1
+    endrepeat
+
+    repeat squarings times
+        set result to result * result
+    endrepeat
+    return result
+endfunction
+
+create function log(x)
+    set fx to cast x to float
+    if fx is less than or equal to 0.0 then
+        return 0.0
+    endif
+
+    set scaled to fx
+    set k to 0
+
+    while scaled is greater than e
+        set scaled to scaled / e
+        set k to k + 1
+    endwhile
+
+    while scaled is less than 1.0 / e
+        set scaled to scaled * e
+        set k to k - 1
+    endwhile
+
+    set z to (scaled - 1.0) / (scaled + 1.0)
+    set z2 to z * z
+    set term to z
+    set sum to 0.0
+    set n to 1
+
+    repeat 30 times
+        set sum to sum + term / cast n to float
+        set term to term * z2
+        set n to n + 2
+    endrepeat
+
+    return 2.0 * sum + cast k to float
+endfunction
+
+create function powerreal(a, b)
+    set base to cast a to float
+    set expn to cast b to float
+    if base is less than or equal to 0.0 then
+        return 0.0
+    endif
+    return exp(expn * log(base))
+endfunction
+
+create function cuberoot(x)
+    set fx to cast x to float
+    if fx is equal to 0.0 then
+        return 0.0
+    endif
+    set neg to false
+    if fx is less than 0.0 then
+        set neg to true
+        set fx to -fx
+    endif
+
+    set g to fx
+    if g is less than 1.0 then
+        set g to 1.0
+    endif
+
+    repeat 30 times
+        set g to (2.0 * g + fx / (g * g)) / 3.0
+    endrepeat
+
+    if neg then
+        return -g
+    endif
+    return g
+endfunction
+
+create function nthroot(x, n)
+    set ni to cast n to int
+    if ni is equal to 0 then
+        return 0.0
+    endif
+    if ni is less than 0 then
+        return inverse(nthroot(x, -ni))
+    endif
+
+    set fx to cast x to float
+    if fx is equal to 0.0 then
+        return 0.0
+    endif
+    if fx is less than 0.0 then
+        if mod(ni, 2) is equal to 0 then
+            return 0.0
+        endif
+        return -nthroot(-fx, ni)
+    endif
+
+    set g to fx
+    if g is less than 1.0 then
+        set g to 1.0
+    endif
+    set ni_f to cast ni to float
+
+    repeat 30 times
+        set g_pow to powerreal(g, ni_f - 1.0)
+        if abs(g_pow) is less than epsilon then
+            return 0.0
+        endif
+        set g to ((ni_f - 1.0) * g + fx / g_pow) / ni_f
+    endrepeat
+    return g
+endfunction
+
+create function degreestoradians(x)
+    return cast x to float * pi / 180.0
+endfunction
+
+create function radianstodegrees(x)
+    return cast x to float * 180.0 / pi
+endfunction
+
+create function sin(x)
+    set r to wrap(cast x to float, -pi, pi)
+    set term to r
+    set result to r
+    set k to 1
+    repeat 12 times
+        set a to cast (2 * k) to float
+        set b to cast (2 * k + 1) to float
+        set term to -term * r * r / (a * b)
+        set result to result + term
+        set k to k + 1
+    endrepeat
+    return result
+endfunction
+
+create function cos(x)
+    set r to wrap(cast x to float, -pi, pi)
+    set term to 1.0
+    set result to 1.0
+    set k to 1
+    repeat 12 times
+        set a to cast (2 * k - 1) to float
+        set b to cast (2 * k) to float
+        set term to -term * r * r / (a * b)
+        set result to result + term
+        set k to k + 1
+    endrepeat
+    return result
+endfunction
+
+create function tan(x)
+    set c to cos(x)
+    if abs(c) is less than epsilon then
+        return 0.0
+    endif
+    return sin(x) / c
+endfunction
+
+create function atan(x)
+    set fx to cast x to float
+    if fx is greater than 1.0 then
+        return pi / 2.0 - atan(1.0 / fx)
+    endif
+    if fx is less than -1.0 then
+        return -pi / 2.0 - atan(1.0 / fx)
+    endif
+    if fx is greater than 0.5 and fx is less than 1.5 then
+        return pi / 4.0 + atan((fx - 1.0) / (fx + 1.0))
+    endif
+    if fx is less than -0.5 and fx is greater than -1.5 then
+        return -pi / 4.0 + atan((fx + 1.0) / (1.0 - fx))
+    endif
+
+    set term to fx
+    set result to 0.0
+    set n to 1
+    repeat 60 times
+        set result to result + term / cast n to float
+        set term to -term * fx * fx
+        set n to n + 2
+    endrepeat
+    return result
+endfunction
+
+create function atan2(y, x)
+    set yy to cast y to float
+    set xx to cast x to float
+    if xx is greater than 0.0 then
+        return atan(yy / xx)
+    endif
+    if xx is less than 0.0 and yy is greater than or equal to 0.0 then
+        return atan(yy / xx) + pi
+    endif
+    if xx is less than 0.0 and yy is less than 0.0 then
+        return atan(yy / xx) - pi
+    endif
+    if xx is equal to 0.0 and yy is greater than 0.0 then
+        return pi / 2.0
+    endif
+    if xx is equal to 0.0 and yy is less than 0.0 then
+        return -pi / 2.0
+    endif
+    return 0.0
+endfunction
+
+create function asin(x)
+    set fx to cast x to float
+    if fx is greater than 1.0 or fx is less than -1.0 then
+        return 0.0
+    endif
+    return atan2(fx, squareroot(1.0 - fx * fx))
+endfunction
+
+create function acos(x)
+    return pi / 2.0 - asin(x)
+endfunction
+
+create function sinh(x)
+    set fx to cast x to float
+    return (exp(fx) - exp(-fx)) / 2.0
+endfunction
+
+create function cosh(x)
+    set fx to cast x to float
+    return (exp(fx) + exp(-fx)) / 2.0
+endfunction
+
+create function tanh(x)
+    set c to cosh(x)
+    if abs(c) is less than epsilon then
+        return 0.0
+    endif
+    return sinh(x) / c
+endfunction
+
+create function hypot(a, b)
+    set x to cast a to float
+    set y to cast b to float
+    return squareroot(x * x + y * y)
+endfunction
+
+create function sigmoid(x)
+    set fx to cast x to float
+    return 1.0 / (1.0 + exp(-fx))
+endfunction
+
+create function gaussian(x, mean, sigma)
+    set xx to cast x to float
+    set mu to cast mean to float
+    set s to abs(cast sigma to float)
+    if s is less than epsilon then
+        return 0.0
+    endif
+    set a to 1.0 / (s * squareroot(2.0 * pi))
+    set b to exp(-((xx - mu) * (xx - mu)) / (2.0 * s * s))
+    return a * b
+endfunction
+
+create function derivative(y_minus, y_plus, h)
+    set hm to cast h to float
+    if abs(hm) is less than epsilon then
+        return 0.0
+    endif
+    return (cast y_plus to float - cast y_minus to float) / (2.0 * hm)
+endfunction
+
+create function secondderivative(y_minus, y0, y_plus, h)
+    set hm to cast h to float
+    if abs(hm) is less than epsilon then
+        return 0.0
+    endif
+    return (cast y_plus to float - 2.0 * cast y0 to float + cast y_minus to float) / (hm * hm)
+endfunction
+
+create function integrate(values, h)
+    set hm to cast h to float
+    set sum to 0.0
+    for each v in(values)
+        set sum to sum + cast v to float
+    endfor
+    return sum * hm
+endfunction
+
+create function mean(values)
+    set sum to 0.0
+    set count to 0
+    for each v in(values)
+        set sum to sum + cast v to float
+        set count to count + 1
+    endfor
+    if count is equal to 0 then
+        return 0.0
+    endif
+    return sum / cast count to float
+endfunction
+
+create function variance(values)
+    set m to mean(values)
+    set sum to 0.0
+    set count to 0
+    for each v in(values)
+        set d to cast v to float - m
+        set sum to sum + d * d
+        set count to count + 1
+    endfor
+    if count is equal to 0 then
+        return 0.0
+    endif
+    return sum / cast count to float
+endfunction
+
+create function stddev(values)
+    return squareroot(variance(values))
+endfunction
+
+create function median(values)
+    set n to length(values)
+    if n is equal to 0 then
+        return 0.0
+    endif
+    sort(values)
+    if mod(n, 2) is equal to 1 then
+        return cast values[n / 2] to float
+    endif
+    set left to cast values[n / 2 - 1] to float
+    set right to cast values[n / 2] to float
+    return (left + right) / 2.0
+endfunction
+
+create function covariance(a, b)
+    set n to length(a)
+    if n is equal to 0 then
+        return 0.0
+    endif
+    if n is not equal to length(b) then
+        return 0.0
+    endif
+
+    set ma to mean(a)
+    set mb to mean(b)
+    set sum to 0.0
+    set i to 0
+    while i is less than n
+        set da to cast a[i] to float - ma
+        set db to cast b[i] to float - mb
+        set sum to sum + da * db
+        set i to i + 1
+    endwhile
+    return sum / cast n to float
+endfunction
+
+create function stats.sorted.copy(values)
+    set out to []
+    for each v in(values)
+        add cast v to float to(out)
+    endfor
+    sort(out)
+    return out
+endfunction
+
+create function mode(values)
+    set n to length(values)
+    if n is equal to 0 then
+        return 0.0
+    endif
+
+    set sorted to stats.sorted.copy(values)
+    set best_value to cast element 0 of(sorted) to float
+    set best_count to 1
+
+    set current_value to best_value
+    set current_count to 1
+    set i to 1
+    while i is less than n
+        set v to cast element i of(sorted) to float
+        set delta to abs(v - current_value)
+        if delta is less than epsilon or delta is equal to epsilon then
+            set current_count to current_count + 1
+        endif
+        if delta is greater than epsilon then
+            if current_count is greater than best_count then
+                set best_count to current_count
+                set best_value to current_value
+            endif
+            set current_value to v
+            set current_count to 1
+        endif
+        set i to i + 1
+    endwhile
+
+    if current_count is greater than best_count then
+        set best_value to current_value
+    endif
+    return best_value
+endfunction
+
+create function quantile(values, q)
+    set n to length(values)
+    if n is equal to 0 then
+        return 0.0
+    endif
+
+    set qq to cast q to float
+    if qq is less than 0.0 then
+        set qq to 0.0
+    endif
+    if qq is greater than 1.0 then
+        set qq to 1.0
+    endif
+
+    set sorted to stats.sorted.copy(values)
+    if n is equal to 1 then
+        return cast element 0 of(sorted) to float
+    endif
+
+    set idx_max to n - 1
+    set pos to qq * cast idx_max to float
+    set lo to floor(pos)
+    set hi to ceil(pos)
+
+    set left to cast element lo of(sorted) to float
+    set right to cast element hi of(sorted) to float
+    if lo is equal to hi then
+        return left
+    endif
+
+    set w to pos - cast lo to float
+    return left + (right - left) * w
+endfunction
+
+create function percentile(values, p)
+    return quantile(values, cast p to float / 100.0)
+endfunction
+
+create function correlation(a, b)
+    set n to length(a)
+    if n is equal to 0 then
+        return 0.0
+    endif
+    if n is not equal to length(b) then
+        return 0.0
+    endif
+
+    set sda to stddev(a)
+    set sdb to stddev(b)
+    set denom to sda * sdb
+    if abs(denom) is less than epsilon then
+        return 0.0
+    endif
+    return covariance(a, b) / denom
+endfunction
+
+create function zscore(value, values)
+    set sd to stddev(values)
+    if abs(sd) is less than epsilon then
+        return 0.0
+    endif
+    return (cast value to float - mean(values)) / sd
+endfunction
+
+create function squareddistance(a, b)
+    set d to cast a to float - cast b to float
+    return d * d
+endfunction
+
+create function iseven(n)
+    return mod(n, 2) is equal to 0
+endfunction
+
+create function isodd(n)
+    return abs(mod(n, 2)) is equal to 1.0
+endfunction
+
+create function log10(x)
+    return log(x) / log(10.0)
+endfunction
+
+create function log2(x)
+    return log(x) / log(2.0)
+endfunction
+
+offer pi
+offer tau
+offer e
+offer epsilon
+offer square
+offer cube
+offer abs
+offer min
+offer max
+offer clamp
+offer average
+offer midpoint
+offer distance
+offer sign
+offer lerp
+offer mod
+offer floor
+offer ceil
+offer round
+offer factorial
+offer inverse
+offer percentage
+offer approach
+offer normalize
+offer map
+offer between
+offer wrap
+offer step
+offer smoothstep
+offer power
+offer squareroot
+offer exp
+offer log
+offer powerreal
+offer cuberoot
+offer nthroot
+offer degreestoradians
+offer radianstodegrees
+offer sin
+offer cos
+offer tan
+offer atan
+offer atan2
+offer asin
+offer acos
+offer sinh
+offer cosh
+offer tanh
+offer hypot
+offer sigmoid
+offer gaussian
+offer derivative
+offer secondderivative
+offer integrate
+offer mean
+offer variance
+offer stddev
+offer median
+offer covariance
+offer mode
+offer quantile
+offer percentile
+offer correlation
+offer zscore
+offer squareddistance
+offer iseven
+offer isodd
+offer log10
+offer log2
+
+# underscore compatibility aliases
+create function stats_sorted_copy(values)
+    return stats.sorted.copy(values)
+endfunction
+end

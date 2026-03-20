@@ -1,0 +1,215 @@
+﻿start
+create library strings
+
+create function string.matches.at(text, pattern, start_index)
+    set s to text
+    set p to pattern
+    set start_i to cast start_index to int
+    set n to length(s)
+    set m to length(p)
+
+    if m is equal to 0 then
+        return true
+    endif
+    if start_i is less than 0 then
+        return false
+    endif
+    if start_i + m is greater than n then
+        return false
+    endif
+
+    set i to 0
+    while i is less than m
+        if character (start_i + i) of(s) is not equal to character i of(p) then
+            return false
+        endif
+        set i to i + 1
+    endwhile
+    return true
+endfunction
+
+create function string.substring(text, start_index, length_count)
+    set s to text
+    set start_i to cast start_index to int
+    set len_i to cast length_count to int
+    set n to length(s)
+
+    if start_i is less than 0 then
+        set start_i to 0
+    endif
+    if len_i is less than or equal to 0 then
+        return ""
+    endif
+    if start_i is greater than or equal to n then
+        return ""
+    endif
+
+    set stop_i to start_i + len_i
+    if stop_i is greater than n then
+        set stop_i to n
+    endif
+
+    set out to ""
+    set i to start_i
+    while i is less than stop_i
+        set out to out + character i of(s)
+        set i to i + 1
+    endwhile
+    return out
+endfunction
+
+create function string.contains(text, needle)
+    return text contains needle
+endfunction
+
+create function string.starts.with(text, prefix)
+    return string.matches.at(text, prefix, 0)
+endfunction
+
+create function string.ends.with(text, suffix)
+    set s to text
+    set n to length(s)
+    set m to length(suffix)
+    if m is greater than n then
+        return false
+    endif
+    return string.matches.at(s, suffix, n - m)
+endfunction
+
+create function string.split(text, delimiter)
+    set s to text
+    set d to delimiter
+    set out to []
+    set n to length(s)
+    set m to length(d)
+
+    if m is equal to 0 then
+        set i to 0
+        while i is less than n
+            add character i of(s) to(out)
+            set i to i + 1
+        endwhile
+        return out
+    endif
+
+    set token to ""
+    set i to 0
+    while i is less than n
+        if string.matches.at(s, d, i) then
+            add token to(out)
+            set token to ""
+            set i to i + m
+        otherwise
+            set token to token + character i of(s)
+            set i to i + 1
+        endif
+    endwhile
+    add token to(out)
+    return out
+endfunction
+
+create function string.join(parts, delimiter)
+    set out to ""
+    set first to true
+    for each part in(parts)
+        if first is equal to false then
+            set out to out + delimiter
+        endif
+        set first to false
+        set out to out + part
+    endfor
+    return out
+endfunction
+
+create function string.replace.all(text, needle, replacement)
+    set s to text
+    set n to length(s)
+    set m to length(needle)
+    if m is equal to 0 then
+        return s
+    endif
+
+    set out to ""
+    set i to 0
+    while i is less than n
+        if string.matches.at(s, needle, i) then
+            set out to out + replacement
+            set i to i + m
+        otherwise
+            set out to out + character i of(s)
+            set i to i + 1
+        endif
+    endwhile
+    return out
+endfunction
+
+create function string.trim.text(text)
+    return trim(text)
+endfunction
+
+create function string.upper(text)
+    return uppercase(text)
+endfunction
+
+create function string.lower(text)
+    return lowercase(text)
+endfunction
+
+offer string.matches.at
+offer string.substring
+offer string.contains
+offer string.starts.with
+offer string.ends.with
+offer string.split
+offer string.join
+offer string.replace.all
+offer string.trim.text
+offer string.upper
+offer string.lower
+
+# underscore compatibility aliases
+create function string_matches_at(text, pattern, start_index)
+    return string.matches.at(text, pattern, start_index)
+endfunction
+offer string_matches_at
+create function string_substring(text, start_index, length_count)
+    return string.substring(text, start_index, length_count)
+endfunction
+offer string_substring
+create function string_contains(text, needle)
+    return string.contains(text, needle)
+endfunction
+offer string_contains
+create function string_starts_with(text, prefix)
+    return string.starts.with(text, prefix)
+endfunction
+offer string_starts_with
+create function string_ends_with(text, suffix)
+    return string.ends.with(text, suffix)
+endfunction
+offer string_ends_with
+create function string_split(text, delimiter)
+    return string.split(text, delimiter)
+endfunction
+offer string_split
+create function string_join(parts, delimiter)
+    return string.join(parts, delimiter)
+endfunction
+offer string_join
+create function string_replace_all(text, needle, replacement)
+    return string.replace.all(text, needle, replacement)
+endfunction
+offer string_replace_all
+create function string_trim_text(text)
+    return string.trim.text(text)
+endfunction
+offer string_trim_text
+create function string_upper(text)
+    return string.upper(text)
+endfunction
+offer string_upper
+create function string_lower(text)
+    return string.lower(text)
+endfunction
+offer string_lower
+end

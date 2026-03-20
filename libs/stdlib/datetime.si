@@ -1,0 +1,236 @@
+﻿start
+create library datetime
+
+load library "strings"
+take string_split from strings
+
+create function datetime.is.leap.year(year_value)
+    set y to cast year_value to int
+    if y / 400 * 400 is equal to y then
+        return true
+    endif
+    if y / 100 * 100 is equal to y then
+        return false
+    endif
+    if y / 4 * 4 is equal to y then
+        return true
+    endif
+    return false
+endfunction
+
+create function datetime.days.in.month(year_value, month_value)
+    set y to cast year_value to int
+    set m to cast month_value to int
+    if m is less than 1 or m is greater than 12 then
+        return 0
+    endif
+    if m is equal to 1 or m is equal to 3 or m is equal to 5 or m is equal to 7 or m is equal to 8 or m is equal to 10 or m is equal to 12 then
+        return 31
+    endif
+    if m is equal to 4 or m is equal to 6 or m is equal to 9 or m is equal to 11 then
+        return 30
+    endif
+    if datetime.is.leap.year(y) then
+        return 29
+    endif
+    return 28
+endfunction
+
+create function datetime.is.valid.date(year_value, month_value, day_value)
+    set y to cast year_value to int
+    set m to cast month_value to int
+    set d to cast day_value to int
+    if y is less than 1 then
+        return false
+    endif
+    if m is less than 1 or m is greater than 12 then
+        return false
+    endif
+    if d is less than 1 then
+        return false
+    endif
+    if d is greater than datetime.days.in.month(y, m) then
+        return false
+    endif
+    return true
+endfunction
+
+create function datetime.make.date(year_value, month_value, day_value)
+    set out to {}
+    add item "year": cast year_value to int to(out)
+    add item "month": cast month_value to int to(out)
+    add item "day": cast day_value to int to(out)
+    return out
+endfunction
+
+create function datetime.pad2.text(text_value)
+    set s to text_value
+    if length(s) is equal to 1 then
+        return "0" + s
+    endif
+    return s
+endfunction
+
+create function datetime.format.date(year_text, month_text, day_text)
+    try
+        set y to cast year_text to int
+        set m to cast month_text to int
+        set d to cast day_text to int
+    otherwise
+        return ""
+    endtry
+    if datetime.is.valid.date(y, m, d) is equal to false then
+        return ""
+    endif
+    return year_text + "-" + datetime.pad2.text(month_text) + "-" + datetime.pad2.text(day_text)
+endfunction
+
+create function datetime.parse.date(text)
+    set result to {}
+    add item "ok": false to(result)
+    add item "year": 0 to(result)
+    add item "month": 0 to(result)
+    add item "day": 0 to(result)
+
+    set parts to string_split(text, "-")
+    if length(parts) is not equal to 3 then
+        return result
+    endif
+
+    try
+        set y to cast element 0 of(parts) to int
+        set m to cast element 1 of(parts) to int
+        set d to cast element 2 of(parts) to int
+    otherwise
+        return result
+    endtry
+
+    if datetime.is.valid.date(y, m, d) then
+        add item "ok": true to(result)
+        add item "year": y to(result)
+        add item "month": m to(result)
+        add item "day": d to(result)
+    endif
+    return result
+endfunction
+
+create function datetime.compare.iso(left_date, right_date)
+    if left_date is equal to right_date then
+        return 0
+    endif
+    if left_date is less than right_date then
+        return -1
+    endif
+    return 1
+endfunction
+
+create function datetime.day.of.year(year_value, month_value, day_value)
+    if datetime.is.valid.date(year_value, month_value, day_value) is equal to false then
+        return 0
+    endif
+
+    set y to cast year_value to int
+    set m to cast month_value to int
+    set d to cast day_value to int
+    set total to 0
+    set mm to 1
+    while mm is less than m
+        set total to total + datetime.days.in.month(y, mm)
+        set mm to mm + 1
+    endwhile
+    return total + d
+endfunction
+
+create function datetime.add.days(date_text, day_delta)
+    set parsed to datetime.parse.date(date_text)
+    if get item "ok" from(parsed) is equal to false then
+        return ""
+    endif
+
+    set y to get item "year" from(parsed)
+    set m to get item "month" from(parsed)
+    set d to get item "day" from(parsed)
+    set delta to cast day_delta to int
+
+    if delta is greater than or equal to 0 then
+        repeat delta times
+            set d to d + 1
+            if d is greater than datetime.days.in.month(y, m) then
+                set d to 1
+                set m to m + 1
+                if m is greater than 12 then
+                    set m to 1
+                    set y to y + 1
+                endif
+            endif
+        endrepeat
+    otherwise
+        repeat (-delta) times
+            set d to d - 1
+            if d is less than 1 then
+                set m to m - 1
+                if m is less than 1 then
+                    set m to 12
+                    set y to y - 1
+                endif
+                set d to datetime.days.in.month(y, m)
+            endif
+        endrepeat
+    endif
+
+    return datetime.make.date(y, m, d)
+endfunction
+
+offer datetime.is.leap.year
+offer datetime.days.in.month
+offer datetime.is.valid.date
+offer datetime.make.date
+offer datetime.pad2.text
+offer datetime.format.date
+offer datetime.parse.date
+offer datetime.compare.iso
+offer datetime.day.of.year
+offer datetime.add.days
+
+# underscore compatibility aliases
+create function datetime_is_leap_year(year_value)
+    return datetime.is.leap.year(year_value)
+endfunction
+offer datetime_is_leap_year
+create function datetime_days_in_month(year_value, month_value)
+    return datetime.days.in.month(year_value, month_value)
+endfunction
+offer datetime_days_in_month
+create function datetime_is_valid_date(year_value, month_value, day_value)
+    return datetime.is.valid.date(year_value, month_value, day_value)
+endfunction
+offer datetime_is_valid_date
+create function datetime_make_date(year_value, month_value, day_value)
+    return datetime.make.date(year_value, month_value, day_value)
+endfunction
+offer datetime_make_date
+create function datetime_pad2_text(text_value)
+    return datetime.pad2.text(text_value)
+endfunction
+offer datetime_pad2_text
+create function datetime_format_date(year_text, month_text, day_text)
+    return datetime.format.date(year_text, month_text, day_text)
+endfunction
+offer datetime_format_date
+create function datetime_parse_date(text)
+    return datetime.parse.date(text)
+endfunction
+offer datetime_parse_date
+create function datetime_compare_iso(left_date, right_date)
+    return datetime.compare.iso(left_date, right_date)
+endfunction
+offer datetime_compare_iso
+create function datetime_day_of_year(year_value, month_value, day_value)
+    return datetime.day.of.year(year_value, month_value, day_value)
+endfunction
+offer datetime_day_of_year
+create function datetime_add_days(date_text, day_delta)
+    return datetime.add.days(date_text, day_delta)
+endfunction
+offer datetime_add_days
+end

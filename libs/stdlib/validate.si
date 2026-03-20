@@ -1,0 +1,157 @@
+﻿start
+create library validate
+
+create function validate.has.key(row, key)
+    return key in(row)
+endfunction
+
+create function validate.has.keys(row, keys)
+    for each key in(keys)
+        if key in(row) then
+        otherwise
+            return false
+        endif
+    endfor
+    return true
+endfunction
+
+create function validate.non.empty.text(value)
+    if value is equal to "" then
+        return false
+    endif
+    return true
+endfunction
+
+create function validate.number(value)
+    try
+        set _v to cast value to float
+        return true
+    otherwise
+        return false
+    endtry
+endfunction
+
+create function validate.number.range(value, minimum, maximum)
+    if validate.number(value) is equal to false then
+        return false
+    endif
+    set v to cast value to float
+    set lo to cast minimum to float
+    set hi to cast maximum to float
+    if v is less than lo then
+        return false
+    endif
+    if v is greater than hi then
+        return false
+    endif
+    return true
+endfunction
+
+create function validate.row.required(row, required_keys)
+    set errors to []
+    for each key in(required_keys)
+        if key in(row) then
+            set is_empty to false
+            try
+                if get item key from(row) is equal to "" then
+                    set is_empty to true
+                endif
+            otherwise
+                set is_empty to false
+            endtry
+            if is_empty then
+                add "missing_value:" + key to(errors)
+            endif
+        otherwise
+            add "missing_key:" + key to(errors)
+        endif
+    endfor
+    return errors
+endfunction
+
+create function validate.table.required(rows, required_keys)
+    set failures to []
+    set i to 0
+    while i is less than length(rows)
+        set row to element i of(rows)
+        set row_errors to validate.row.required(row, required_keys)
+        if length(row_errors) is greater than 0 then
+            set issue to {}
+            add item "index": i to(issue)
+            add item "errors": row_errors to(issue)
+            add issue to(failures)
+        endif
+        set i to i + 1
+    endwhile
+    return failures
+endfunction
+
+create function validate.table.number.range(rows, column, minimum, maximum)
+    set failures to []
+    set i to 0
+    while i is less than length(rows)
+        set row to element i of(rows)
+        if column in(row) then
+            set value to get item column from(row)
+            if validate.number.range(value, minimum, maximum) is equal to false then
+                set issue to {}
+                add item "index": i to(issue)
+                add item "column": column to(issue)
+                add item "value": value to(issue)
+                add issue to(failures)
+            endif
+        otherwise
+            set issue to {}
+            add item "index": i to(issue)
+            add item "column": column to(issue)
+            add item "value": "" to(issue)
+            add issue to(failures)
+        endif
+        set i to i + 1
+    endwhile
+    return failures
+endfunction
+
+offer validate.has.key
+offer validate.has.keys
+offer validate.non.empty.text
+offer validate.number
+offer validate.number.range
+offer validate.row.required
+offer validate.table.required
+offer validate.table.number.range
+
+# underscore compatibility aliases
+create function validate_has_key(row, key)
+    return validate.has.key(row, key)
+endfunction
+offer validate_has_key
+create function validate_has_keys(row, keys)
+    return validate.has.keys(row, keys)
+endfunction
+offer validate_has_keys
+create function validate_non_empty_text(value)
+    return validate.non.empty.text(value)
+endfunction
+offer validate_non_empty_text
+create function validate_number(value)
+    return validate.number(value)
+endfunction
+offer validate_number
+create function validate_number_range(value, minimum, maximum)
+    return validate.number.range(value, minimum, maximum)
+endfunction
+offer validate_number_range
+create function validate_row_required(row, required_keys)
+    return validate.row.required(row, required_keys)
+endfunction
+offer validate_row_required
+create function validate_table_required(rows, required_keys)
+    return validate.table.required(rows, required_keys)
+endfunction
+offer validate_table_required
+create function validate_table_number_range(rows, column, minimum, maximum)
+    return validate.table.number.range(rows, column, minimum, maximum)
+endfunction
+offer validate_table_number_range
+end

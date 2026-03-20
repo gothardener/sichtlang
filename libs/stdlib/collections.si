@@ -1,0 +1,232 @@
+﻿start
+create library collections
+
+create function collection.copy(values)
+    set out to []
+    for each v in(values)
+        add v to(out)
+    endfor
+    return out
+endfunction
+
+create function range.numbers(start_value, end_value, step_value)
+    set start_i to cast start_value to int
+    set end_i to cast end_value to int
+    set step_i to cast step_value to int
+    set out to []
+
+    if step_i is equal to 0 then
+        return out
+    endif
+
+    set i to start_i
+    if step_i is greater than 0 then
+        while i is less than or equal to end_i
+            add i to(out)
+            set i to i + step_i
+        endwhile
+        return out
+    endif
+
+    while i is greater than or equal to end_i
+        add i to(out)
+        set i to i + step_i
+    endwhile
+    return out
+endfunction
+
+create function range.to(end_value)
+    return range.numbers(0, end_value, 1)
+endfunction
+
+create function unique.values(values)
+    set out to []
+    for each v in(values)
+        if v in(out) then
+        otherwise
+            add v to(out)
+        endif
+    endfor
+    return out
+endfunction
+
+create function chunk.values(values, chunk_size)
+    set size to cast chunk_size to int
+    set out to []
+    if size is less than or equal to 0 then
+        return out
+    endif
+
+    set n to length(values)
+    set i to 0
+    while i is less than n
+        set chunk to []
+        set j to 0
+        while j is less than size and i + j is less than n
+            add element (i + j) of(values) to(chunk)
+            set j to j + 1
+        endwhile
+        add chunk to(out)
+        set i to i + size
+    endwhile
+    return out
+endfunction
+
+create function flatten.one.level(values)
+    set out to []
+    for each entry in(values)
+        try
+            for each inner in(entry)
+                add inner to(out)
+            endfor
+        otherwise
+            add entry to(out)
+        endtry
+    endfor
+    return out
+endfunction
+
+create function zip.values(left_values, right_values)
+    set out to []
+    set left_n to length(left_values)
+    set right_n to length(right_values)
+    set n to left_n
+    if right_n is less than n then
+        set n to right_n
+    endif
+
+    set i to 0
+    while i is less than n
+        add [element i of(left_values), element i of(right_values)] to(out)
+        set i to i + 1
+    endwhile
+    return out
+endfunction
+
+create function take.first(values, count)
+    set n to cast count to int
+    set out to []
+    if n is less than or equal to 0 then
+        return out
+    endif
+
+    set size to length(values)
+    if n is greater than size then
+        set n to size
+    endif
+
+    set i to 0
+    while i is less than n
+        add element i of(values) to(out)
+        set i to i + 1
+    endwhile
+    return out
+endfunction
+
+create function take.last(values, count)
+    set n to cast count to int
+    set out to []
+    if n is less than or equal to 0 then
+        return out
+    endif
+
+    set size to length(values)
+    if n is greater than size then
+        set n to size
+    endif
+
+    set start_index to size - n
+    set i to start_index
+    while i is less than size
+        add element i of(values) to(out)
+        set i to i + 1
+    endwhile
+    return out
+endfunction
+
+create function repeat.value(value, count)
+    set n to cast count to int
+    set out to []
+    if n is less than or equal to 0 then
+        return out
+    endif
+
+    repeat n times
+        add value to(out)
+    endrepeat
+    return out
+endfunction
+
+create function count.text.values(values)
+    set counts to {}
+    for each value in(values)
+        try
+            if value in(counts) then
+                add item value: get item value from(counts) + 1 to(counts)
+            otherwise
+                add item value: 1 to(counts)
+            endif
+        otherwise
+        endtry
+    endfor
+    return counts
+endfunction
+
+offer collection.copy
+offer range.numbers
+offer range.to
+offer unique.values
+offer chunk.values
+offer flatten.one.level
+offer zip.values
+offer take.first
+offer take.last
+offer repeat.value
+offer count.text.values
+
+# underscore compatibility aliases
+create function collection_copy(values)
+    return collection.copy(values)
+endfunction
+offer collection_copy
+create function range_numbers(start_value, end_value, step_value)
+    return range.numbers(start_value, end_value, step_value)
+endfunction
+offer range_numbers
+create function range_to(end_value)
+    return range.to(end_value)
+endfunction
+offer range_to
+create function unique_values(values)
+    return unique.values(values)
+endfunction
+offer unique_values
+create function chunk_values(values, chunk_size)
+    return chunk.values(values, chunk_size)
+endfunction
+offer chunk_values
+create function flatten_one_level(values)
+    return flatten.one.level(values)
+endfunction
+offer flatten_one_level
+create function zip_values(left_values, right_values)
+    return zip.values(left_values, right_values)
+endfunction
+offer zip_values
+create function take_first(values, count)
+    return take.first(values, count)
+endfunction
+offer take_first
+create function take_last(values, count)
+    return take.last(values, count)
+endfunction
+offer take_last
+create function repeat_value(value, count)
+    return repeat.value(value, count)
+endfunction
+offer repeat_value
+create function count_text_values(values)
+    return count.text.values(values)
+endfunction
+offer count_text_values
+end

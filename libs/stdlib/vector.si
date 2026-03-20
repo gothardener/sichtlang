@@ -1,0 +1,624 @@
+﻿start
+create library vector
+
+load library "math"
+take squareroot from math
+take abs from math
+take acos from math
+take clamp from math
+take min from math
+take max from math
+take epsilon from math
+
+create function vec.dim(v)
+    return length of(v)
+endfunction
+
+create function vec.copy(v)
+    set out to []
+    for each x in(v)
+        add cast x to float to(out)
+    endfor
+    return out
+endfunction
+
+create function vec.fill(n, value)
+    set count to cast n to int
+    set out to []
+    if count is less than 0 then
+        return out
+    endif
+    repeat count times
+        add cast value to float to(out)
+    endrepeat
+    return out
+endfunction
+
+create function vec.zeros(n)
+    return vec.fill(n, 0.0)
+endfunction
+
+create function vec.ones(n)
+    return vec.fill(n, 1.0)
+endfunction
+
+create function vec.from2(x, y)
+    return [cast x to float, cast y to float]
+endfunction
+
+create function vec.from3(x, y, z)
+    return [cast x to float, cast y to float, cast z to float]
+endfunction
+
+create function vec.sum(v)
+    set total to 0.0
+    for each x in(v)
+        set total to total + cast x to float
+    endfor
+    return total
+endfunction
+
+create function vec.mean(v)
+    set n to length of(v)
+    if n is equal to 0 then
+        return 0.0
+    endif
+    return vec.sum(v) / cast n to float
+endfunction
+
+create function vec.min.value(v)
+    set n to length of(v)
+    if n is equal to 0 then
+        return 0.0
+    endif
+    set best to cast element 0 of(v) to float
+    set i to 1
+    while i is less than n
+        set x to cast element i of(v) to float
+        set best to min(best, x)
+        set i to i + 1
+    endwhile
+    return best
+endfunction
+
+create function vec.max.value(v)
+    set n to length of(v)
+    if n is equal to 0 then
+        return 0.0
+    endif
+    set best to cast element 0 of(v) to float
+    set i to 1
+    while i is less than n
+        set x to cast element i of(v) to float
+        set best to max(best, x)
+        set i to i + 1
+    endwhile
+    return best
+endfunction
+
+create function vec.add(a, b)
+    set n to length of(a)
+    if n is not equal to length of(b) then
+        return []
+    endif
+    set out to []
+    set i to 0
+    while i is less than n
+        set av to cast element i of(a) to float
+        set bv to cast element i of(b) to float
+        add av + bv to(out)
+        set i to i + 1
+    endwhile
+    return out
+endfunction
+
+create function vec.sub(a, b)
+    set n to length of(a)
+    if n is not equal to length of(b) then
+        return []
+    endif
+    set out to []
+    set i to 0
+    while i is less than n
+        set av to cast element i of(a) to float
+        set bv to cast element i of(b) to float
+        add av - bv to(out)
+        set i to i + 1
+    endwhile
+    return out
+endfunction
+
+create function vec.hadamard(a, b)
+    set n to length of(a)
+    if n is not equal to length of(b) then
+        return []
+    endif
+    set out to []
+    set i to 0
+    while i is less than n
+        set av to cast element i of(a) to float
+        set bv to cast element i of(b) to float
+        add av * bv to(out)
+        set i to i + 1
+    endwhile
+    return out
+endfunction
+
+create function vec.scale(v, s)
+    set sv to cast s to float
+    set out to []
+    for each x in(v)
+        add cast x to float * sv to(out)
+    endfor
+    return out
+endfunction
+
+create function vec.dot(a, b)
+    set n to length of(a)
+    if n is not equal to length of(b) then
+        return 0.0
+    endif
+    set total to 0.0
+    set i to 0
+    while i is less than n
+        set av to cast element i of(a) to float
+        set bv to cast element i of(b) to float
+        set total to total + av * bv
+        set i to i + 1
+    endwhile
+    return total
+endfunction
+
+create function vec.magnitude(v)
+    return squareroot(vec.dot(v, v))
+endfunction
+
+create function vec.normalize(v)
+    set m to vec.magnitude(v)
+    if abs(m) is less than epsilon then
+        return vec.zeros(length of(v))
+    endif
+    return vec.scale(v, 1.0 / m)
+endfunction
+
+create function vec.distance(a, b)
+    return vec.magnitude(vec.sub(a, b))
+endfunction
+
+create function vec.project(a, b)
+    set denom to vec.dot(b, b)
+    if abs(denom) is less than epsilon then
+        return vec.zeros(length of(a))
+    endif
+    return vec.scale(b, vec.dot(a, b) / denom)
+endfunction
+
+create function vec.reject(a, b)
+    return vec.sub(a, vec.project(a, b))
+endfunction
+
+create function vec.angle(a, b)
+    set ma to vec.magnitude(a)
+    set mb to vec.magnitude(b)
+    set d to ma * mb
+    if abs(d) is less than epsilon then
+        return 0.0
+    endif
+    set c to vec.dot(a, b) / d
+    set c to clamp(c, -1.0, 1.0)
+    return acos(c)
+endfunction
+
+create function vec.cross(a, b)
+    if length of(a) is not equal to 3 then
+        return []
+    endif
+    if length of(b) is not equal to 3 then
+        return []
+    endif
+
+    set ax to cast element 0 of(a) to float
+    set ay to cast element 1 of(a) to float
+    set az to cast element 2 of(a) to float
+    set bx to cast element 0 of(b) to float
+    set by to cast element 1 of(b) to float
+    set bz to cast element 2 of(b) to float
+
+    return [
+        ay * bz - az * by,
+        az * bx - ax * bz,
+        ax * by - ay * bx
+    ]
+endfunction
+
+create function vec.lerp(a, b, t)
+    return vec.add(a, vec.scale(vec.sub(b, a), cast t to float))
+endfunction
+
+create function vec.almost.equal(a, b, tol)
+    set n to length of(a)
+    if n is not equal to length of(b) then
+        return false
+    endif
+    set tv to abs(cast tol to float)
+    set i to 0
+    while i is less than n
+        set av to cast element i of(a) to float
+        set bv to cast element i of(b) to float
+        if abs(av - bv) is greater than tv then
+            return false
+        endif
+        set i to i + 1
+    endwhile
+    return true
+endfunction
+
+create function vec.is.zero(v, tol)
+    set tv to abs(cast tol to float)
+    for each x in(v)
+        if abs(cast x to float) is greater than tv then
+            return false
+        endif
+    endfor
+    return true
+endfunction
+
+create function vector.dimension(v)
+    return vec.dim(v)
+endfunction
+
+create function vector.clone(v)
+    return vec.copy(v)
+endfunction
+
+create function vector.fill(size, value)
+    return vec.fill(size, value)
+endfunction
+
+create function vector.zeros(size)
+    return vec.zeros(size)
+endfunction
+
+create function vector.ones(size)
+    return vec.ones(size)
+endfunction
+
+create function vector2(x, y)
+    return vec.from2(x, y)
+endfunction
+
+create function vector3(x, y, z)
+    return vec.from3(x, y, z)
+endfunction
+
+create function vector.sum(v)
+    return vec.sum(v)
+endfunction
+
+create function vector.mean(v)
+    return vec.mean(v)
+endfunction
+
+create function vector.min(v)
+    return vec.min.value(v)
+endfunction
+
+create function vector.max(v)
+    return vec.max.value(v)
+endfunction
+
+create function vector.add(a, b)
+    return vec.add(a, b)
+endfunction
+
+create function vector.subtract(a, b)
+    return vec.sub(a, b)
+endfunction
+
+create function vector.multiply.elements(a, b)
+    return vec.hadamard(a, b)
+endfunction
+
+create function vector.scale(v, scalar)
+    return vec.scale(v, scalar)
+endfunction
+
+create function vector.dot(a, b)
+    return vec.dot(a, b)
+endfunction
+
+create function vector.length(v)
+    return vec.magnitude(v)
+endfunction
+
+create function vector.normalize(v)
+    return vec.normalize(v)
+endfunction
+
+create function vector.distance(a, b)
+    return vec.distance(a, b)
+endfunction
+
+create function vector.project(a, b)
+    return vec.project(a, b)
+endfunction
+
+create function vector.reject(a, b)
+    return vec.reject(a, b)
+endfunction
+
+create function vector.angle(a, b)
+    return vec.angle(a, b)
+endfunction
+
+create function vector.cross(a, b)
+    return vec.cross(a, b)
+endfunction
+
+create function vector.lerp(a, b, t)
+    return vec.lerp(a, b, t)
+endfunction
+
+create function vector.almost.equal(a, b, tolerance)
+    return vec.almost.equal(a, b, tolerance)
+endfunction
+
+create function vector.is.zero(v, tolerance)
+    return vec.is.zero(v, tolerance)
+endfunction
+
+offer vec.dim
+offer vec.copy
+offer vec.fill
+offer vec.zeros
+offer vec.ones
+offer vec.from2
+offer vec.from3
+offer vec.sum
+offer vec.mean
+offer vec.min.value
+offer vec.max.value
+offer vec.add
+offer vec.sub
+offer vec.hadamard
+offer vec.scale
+offer vec.dot
+offer vec.magnitude
+offer vec.normalize
+offer vec.distance
+offer vec.project
+offer vec.reject
+offer vec.angle
+offer vec.cross
+offer vec.lerp
+offer vec.almost.equal
+offer vec.is.zero
+offer vector.dimension
+offer vector.clone
+offer vector.fill
+offer vector.zeros
+offer vector.ones
+offer vector2
+offer vector3
+offer vector.sum
+offer vector.mean
+offer vector.min
+offer vector.max
+offer vector.add
+offer vector.subtract
+offer vector.multiply.elements
+offer vector.scale
+offer vector.dot
+offer vector.length
+offer vector.normalize
+offer vector.distance
+offer vector.project
+offer vector.reject
+offer vector.angle
+offer vector.cross
+offer vector.lerp
+offer vector.almost.equal
+offer vector.is.zero
+
+# underscore compatibility aliases
+create function vec_dim(v)
+    return vec.dim(v)
+endfunction
+offer vec_dim
+create function vec_copy(v)
+    return vec.copy(v)
+endfunction
+offer vec_copy
+create function vec_fill(n, value)
+    return vec.fill(n, value)
+endfunction
+offer vec_fill
+create function vec_zeros(n)
+    return vec.zeros(n)
+endfunction
+offer vec_zeros
+create function vec_ones(n)
+    return vec.ones(n)
+endfunction
+offer vec_ones
+create function vec_from2(x, y)
+    return vec.from2(x, y)
+endfunction
+offer vec_from2
+create function vec_from3(x, y, z)
+    return vec.from3(x, y, z)
+endfunction
+offer vec_from3
+create function vec_sum(v)
+    return vec.sum(v)
+endfunction
+offer vec_sum
+create function vec_mean(v)
+    return vec.mean(v)
+endfunction
+offer vec_mean
+create function vec_min_value(v)
+    return vec.min.value(v)
+endfunction
+offer vec_min_value
+create function vec_max_value(v)
+    return vec.max.value(v)
+endfunction
+offer vec_max_value
+create function vec_add(a, b)
+    return vec.add(a, b)
+endfunction
+offer vec_add
+create function vec_sub(a, b)
+    return vec.sub(a, b)
+endfunction
+offer vec_sub
+create function vec_hadamard(a, b)
+    return vec.hadamard(a, b)
+endfunction
+offer vec_hadamard
+create function vec_scale(v, s)
+    return vec.scale(v, s)
+endfunction
+offer vec_scale
+create function vec_dot(a, b)
+    return vec.dot(a, b)
+endfunction
+offer vec_dot
+create function vec_magnitude(v)
+    return vec.magnitude(v)
+endfunction
+offer vec_magnitude
+create function vec_normalize(v)
+    return vec.normalize(v)
+endfunction
+offer vec_normalize
+create function vec_distance(a, b)
+    return vec.distance(a, b)
+endfunction
+offer vec_distance
+create function vec_project(a, b)
+    return vec.project(a, b)
+endfunction
+offer vec_project
+create function vec_reject(a, b)
+    return vec.reject(a, b)
+endfunction
+offer vec_reject
+create function vec_angle(a, b)
+    return vec.angle(a, b)
+endfunction
+offer vec_angle
+create function vec_cross(a, b)
+    return vec.cross(a, b)
+endfunction
+offer vec_cross
+create function vec_lerp(a, b, t)
+    return vec.lerp(a, b, t)
+endfunction
+offer vec_lerp
+create function vec_almost_equal(a, b, tol)
+    return vec.almost.equal(a, b, tol)
+endfunction
+offer vec_almost_equal
+create function vec_is_zero(v, tol)
+    return vec.is.zero(v, tol)
+endfunction
+offer vec_is_zero
+create function vector_dimension(v)
+    return vector.dimension(v)
+endfunction
+offer vector_dimension
+create function vector_clone(v)
+    return vector.clone(v)
+endfunction
+offer vector_clone
+create function vector_fill(size, value)
+    return vector.fill(size, value)
+endfunction
+offer vector_fill
+create function vector_zeros(size)
+    return vector.zeros(size)
+endfunction
+offer vector_zeros
+create function vector_ones(size)
+    return vector.ones(size)
+endfunction
+offer vector_ones
+create function vector_sum(v)
+    return vector.sum(v)
+endfunction
+offer vector_sum
+create function vector_mean(v)
+    return vector.mean(v)
+endfunction
+offer vector_mean
+create function vector_min(v)
+    return vector.min(v)
+endfunction
+offer vector_min
+create function vector_max(v)
+    return vector.max(v)
+endfunction
+offer vector_max
+create function vector_add(a, b)
+    return vector.add(a, b)
+endfunction
+offer vector_add
+create function vector_subtract(a, b)
+    return vector.subtract(a, b)
+endfunction
+offer vector_subtract
+create function vector_multiply_elements(a, b)
+    return vector.multiply.elements(a, b)
+endfunction
+offer vector_multiply_elements
+create function vector_scale(v, scalar)
+    return vector.scale(v, scalar)
+endfunction
+offer vector_scale
+create function vector_dot(a, b)
+    return vector.dot(a, b)
+endfunction
+offer vector_dot
+create function vector_length(v)
+    return vector.length(v)
+endfunction
+offer vector_length
+create function vector_normalize(v)
+    return vector.normalize(v)
+endfunction
+offer vector_normalize
+create function vector_distance(a, b)
+    return vector.distance(a, b)
+endfunction
+offer vector_distance
+create function vector_project(a, b)
+    return vector.project(a, b)
+endfunction
+offer vector_project
+create function vector_reject(a, b)
+    return vector.reject(a, b)
+endfunction
+offer vector_reject
+create function vector_angle(a, b)
+    return vector.angle(a, b)
+endfunction
+offer vector_angle
+create function vector_cross(a, b)
+    return vector.cross(a, b)
+endfunction
+offer vector_cross
+create function vector_lerp(a, b, t)
+    return vector.lerp(a, b, t)
+endfunction
+offer vector_lerp
+create function vector_almost_equal(a, b, tolerance)
+    return vector.almost.equal(a, b, tolerance)
+endfunction
+offer vector_almost_equal
+create function vector_is_zero(v, tolerance)
+    return vector.is.zero(v, tolerance)
+endfunction
+offer vector_is_zero
+end

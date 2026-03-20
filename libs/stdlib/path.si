@@ -1,0 +1,231 @@
+﻿start
+create library path
+
+create function path.backslash()
+    return character 0 of("\\")
+endfunction
+
+create function path.is.separator(ch)
+    set bs to path.backslash()
+    if ch is equal to "/" then
+        return true
+    endif
+    if ch is equal to bs then
+        return true
+    endif
+    return false
+endfunction
+
+create function path.substring(text, start_index, length_count)
+    set s to text
+    set start_i to cast start_index to int
+    set len_i to cast length_count to int
+    set n to length(s)
+
+    if start_i is less than 0 then
+        set start_i to 0
+    endif
+    if len_i is less than or equal to 0 then
+        return ""
+    endif
+    if start_i is greater than or equal to n then
+        return ""
+    endif
+
+    set stop_i to start_i + len_i
+    if stop_i is greater than n then
+        set stop_i to n
+    endif
+
+    set out to ""
+    set i to start_i
+    while i is less than stop_i
+        set out to out + character i of(s)
+        set i to i + 1
+    endwhile
+    return out
+endfunction
+
+create function path.normalize(path_text)
+    set s to path_text
+    set out to ""
+    set i to 0
+    set n to length(s)
+    set last_was_sep to false
+
+    while i is less than n
+        set ch to character i of(s)
+        if path.is.separator(ch) then
+            if last_was_sep is equal to false then
+                set out to out + "/"
+                set last_was_sep to true
+            endif
+        otherwise
+            set out to out + ch
+            set last_was_sep to false
+        endif
+        set i to i + 1
+    endwhile
+
+    set out_n to length(out)
+    if out_n is greater than 1 and character (out_n - 1) of(out) is equal to "/" then
+        return path.substring(out, 0, out_n - 1)
+    endif
+    return out
+endfunction
+
+create function path.is.absolute(path_text)
+    set p to path.normalize(path_text)
+    set n to length(p)
+    if n is equal to 0 then
+        return false
+    endif
+    if character 0 of(p) is equal to "/" then
+        return true
+    endif
+    if n is greater than or equal to 2 and character 1 of(p) is equal to ":" then
+        return true
+    endif
+    return false
+endfunction
+
+create function path.join(left_path, right_path)
+    set left_n to path.normalize(left_path)
+    set right_n to path.normalize(right_path)
+
+    if length(left_n) is equal to 0 then
+        return right_n
+    endif
+    if length(right_n) is equal to 0 then
+        return left_n
+    endif
+    if path.is.absolute(right_n) then
+        return right_n
+    endif
+
+    if character (length(left_n) - 1) of(left_n) is equal to "/" then
+        return left_n + right_n
+    endif
+    return left_n + "/" + right_n
+endfunction
+
+create function path.basename(path_text)
+    set p to path.normalize(path_text)
+    set n to length(p)
+    if n is equal to 0 then
+        return ""
+    endif
+
+    set i to n - 1
+    while i is greater than or equal to 0
+        if character i of(p) is equal to "/" then
+            return path.substring(p, i + 1, n - i - 1)
+        endif
+        set i to i - 1
+    endwhile
+    return p
+endfunction
+
+create function path.dirname(path_text)
+    set p to path.normalize(path_text)
+    set n to length(p)
+    if n is equal to 0 then
+        return ""
+    endif
+
+    set i to n - 1
+    while i is greater than or equal to 0
+        if character i of(p) is equal to "/" then
+            if i is equal to 0 then
+                return "/"
+            endif
+            return path.substring(p, 0, i)
+        endif
+        set i to i - 1
+    endwhile
+    return ""
+endfunction
+
+create function path.extension(path_text)
+    set base to path.basename(path_text)
+    set n to length(base)
+    if n is less than or equal to 1 then
+        return ""
+    endif
+
+    set i to n - 1
+    while i is greater than 0
+        if character i of(base) is equal to "." then
+            return path.substring(base, i + 1, n - i - 1)
+        endif
+        set i to i - 1
+    endwhile
+    return ""
+endfunction
+
+create function path.stem(path_text)
+    set base to path.basename(path_text)
+    set n to length(base)
+    if n is less than or equal to 1 then
+        return base
+    endif
+
+    set i to n - 1
+    while i is greater than 0
+        if character i of(base) is equal to "." then
+            return path.substring(base, 0, i)
+        endif
+        set i to i - 1
+    endwhile
+    return base
+endfunction
+
+offer path.is.separator
+offer path.normalize
+offer path.is.absolute
+offer path.join
+offer path.basename
+offer path.dirname
+offer path.extension
+offer path.stem
+
+# underscore compatibility aliases
+create function path_backslash()
+    return path.backslash()
+endfunction
+create function path_is_separator(ch)
+    return path.is.separator(ch)
+endfunction
+offer path_is_separator
+create function path_substring(text, start_index, length_count)
+    return path.substring(text, start_index, length_count)
+endfunction
+create function path_normalize(path_text)
+    return path.normalize(path_text)
+endfunction
+offer path_normalize
+create function path_is_absolute(path_text)
+    return path.is.absolute(path_text)
+endfunction
+offer path_is_absolute
+create function path_join(left_path, right_path)
+    return path.join(left_path, right_path)
+endfunction
+offer path_join
+create function path_basename(path_text)
+    return path.basename(path_text)
+endfunction
+offer path_basename
+create function path_dirname(path_text)
+    return path.dirname(path_text)
+endfunction
+offer path_dirname
+create function path_extension(path_text)
+    return path.extension(path_text)
+endfunction
+offer path_extension
+create function path_stem(path_text)
+    return path.stem(path_text)
+endfunction
+offer path_stem
+end

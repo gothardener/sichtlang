@@ -1,0 +1,141 @@
+start
+create library http
+
+load library "json"
+take parse_json from "json"
+
+create function http.response(ok, status, body, error_text)
+    return {
+        "ok": ok,
+        "status": status,
+        "body": body,
+        "error": error_text
+    }
+endfunction
+
+create function http.ok(response)
+    if "ok" in(response) then
+        return get item "ok" from(response)
+    endif
+    return false
+endfunction
+
+create function http.status(response)
+    if "status" in(response) then
+        return get item "status" from(response)
+    endif
+    return 0
+endfunction
+
+create function http.body(response)
+    if "body" in(response) then
+        return get item "body" from(response)
+    endif
+    return ""
+endfunction
+
+create function http.error(response)
+    if "error" in(response) then
+        return get item "error" from(response)
+    endif
+    return ""
+endfunction
+
+create function http.get(url)
+    return native.http.get(url)
+endfunction
+
+create function http.post(url, body)
+    return native.http.post(url, body)
+endfunction
+
+create function http.request(method, url, body)
+    return native.http.request(method, url, body)
+endfunction
+
+create function http.download(url, path)
+    return native.http.download(url, path)
+endfunction
+
+create function http.get.json(url)
+    set response to http.get(url)
+    if http.ok(response) is equal to false then
+        return {
+            "ok": false,
+            "response": response,
+            "parsed": false,
+            "json": {}
+        }
+    endif
+
+    set parsed to parse_json(http.body(response))
+    return {
+        "ok": true,
+        "response": response,
+        "parsed": true,
+        "json": parsed
+    }
+endfunction
+
+offer http.response
+offer http.ok
+offer http.status
+offer http.body
+offer http.error
+offer http.get
+offer http.post
+offer http.request
+offer http.download
+offer http.get.json
+
+create function http_response(ok, status, body, error_text)
+    return http.response(ok, status, body, error_text)
+endfunction
+
+create function http_ok(response)
+    return http.ok(response)
+endfunction
+
+create function http_status(response)
+    return http.status(response)
+endfunction
+
+create function http_body(response)
+    return http.body(response)
+endfunction
+
+create function http_error(response)
+    return http.error(response)
+endfunction
+
+create function http_get(url)
+    return http.get(url)
+endfunction
+
+create function http_post(url, body)
+    return http.post(url, body)
+endfunction
+
+create function http_request(method, url, body)
+    return http.request(method, url, body)
+endfunction
+
+create function http_download(url, path)
+    return http.download(url, path)
+endfunction
+
+create function http_get_json(url)
+    return http.get.json(url)
+endfunction
+
+offer http_response
+offer http_ok
+offer http_status
+offer http_body
+offer http_error
+offer http_get
+offer http_post
+offer http_request
+offer http_download
+offer http_get_json
+end

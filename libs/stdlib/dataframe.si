@@ -1,0 +1,438 @@
+start
+create library dataframe
+
+load library "csv"
+take read.csv.table from "csv"
+take csv.read.table.from.file from "csv"
+take write.csv.table from "csv"
+take csv.write.table.to.file from "csv"
+
+load library "table"
+take table.head from "table"
+take table.select.columns from "table"
+take table.filter.equals from "table"
+take table.filter.greater from "table"
+take table.filter.less from "table"
+take table.sort.by.number from "table"
+take table.group.count from "table"
+take table.sum from "table"
+take table.mean from "table"
+take table.inner.join from "table"
+
+load library "table_plus"
+take table.group.sum from "table_plus"
+take table.group.mean from "table_plus"
+take table.drop.missing from "table_plus"
+take table.fill.missing from "table_plus"
+take table.left.join from "table_plus"
+
+load library "math"
+take min from "math"
+take max from "math"
+take mean from "math"
+
+create function df.copy.row(row)
+    set out to {}
+    for each key in(row)
+        add item key: get item key from(row) to(out)
+    endfor
+    return out
+endfunction
+
+create function df.copy.rows(rows)
+    set out to []
+    for each row in(rows)
+        add df.copy.row(row) to(out)
+    endfor
+    return out
+endfunction
+
+create function df.derive.columns(rows)
+    set cols to []
+    for each row in(rows)
+        for each key in(row)
+            if key in(cols) then
+            otherwise
+                add key to(cols)
+            endif
+        endfor
+    endfor
+    return cols
+endfunction
+
+create function df.normalize.row(row, columns)
+    set out to {}
+    for each key in(columns)
+        if key in(row) then
+            add item key: get item key from(row) to(out)
+        otherwise
+            add item key: "" to(out)
+        endif
+    endfor
+    return out
+endfunction
+
+create function df.normalize.rows(rows, columns)
+    set out to []
+    for each row in(rows)
+        add df.normalize.row(row, columns) to(out)
+    endfor
+    return out
+endfunction
+
+create function df.make(rows, columns)
+    set frame to {}
+    add item "rows": df.normalize.rows(df.copy.rows(rows), columns) to(frame)
+    add item "columns": columns to(frame)
+    return frame
+endfunction
+
+create function df.empty()
+    return df.make([], [])
+endfunction
+
+create function df.from.rows(rows)
+    set copied to df.copy.rows(rows)
+    set cols to df.derive.columns(copied)
+    return df.make(copied, cols)
+endfunction
+
+create function df.from.csv(path)
+    return df.from.rows(read.csv.table(path))
+endfunction
+
+create function df.from.csv.with.delimiter(path, delimiter)
+    return df.from.rows(csv.read.table.from.file(path, delimiter))
+endfunction
+
+create function df.rows(frame)
+    if "rows" in(frame) then
+        return get item "rows" from(frame)
+    endif
+    return []
+endfunction
+
+create function df.columns(frame)
+    if "columns" in(frame) then
+        return get item "columns" from(frame)
+    endif
+    return df.derive.columns(df.rows(frame))
+endfunction
+
+create function df.row.count(frame)
+    return length(df.rows(frame))
+endfunction
+
+create function df.column.count(frame)
+    return length(df.columns(frame))
+endfunction
+
+create function df.info(frame)
+    set out to {}
+    add item "row_count": df.row.count(frame) to(out)
+    add item "column_count": df.column.count(frame) to(out)
+    add item "columns": df.columns(frame) to(out)
+    return out
+endfunction
+
+create function df.head(frame, count)
+    set cols to df.columns(frame)
+    set head_rows to table.head(df.rows(frame), count)
+    return df.make(head_rows, cols)
+endfunction
+
+create function df.select.columns(frame, columns)
+    set selected to table.select.columns(df.rows(frame), columns)
+    return df.make(selected, columns)
+endfunction
+
+create function df.drop.columns(frame, columns_to_drop)
+    set keep to []
+    for each col in(df.columns(frame))
+        if col in(columns_to_drop) then
+        otherwise
+            add col to(keep)
+        endif
+    endfor
+    return df.select.columns(frame, keep)
+endfunction
+
+create function df.rename.column(frame, old_name, new_name)
+    set old_cols to df.columns(frame)
+    set new_cols to []
+    for each col in(old_cols)
+        if col is equal to old_name then
+            add new_name to(new_cols)
+        otherwise
+            add col to(new_cols)
+        endif
+    endfor
+
+    set out_rows to []
+    for each row in(df.rows(frame))
+        set out_row to {}
+        for each col in(old_cols)
+            set out_key to col
+            if col is equal to old_name then
+                set out_key to new_name
+            endif
+            if col in(row) then
+                add item out_key: get item col from(row) to(out_row)
+            otherwise
+                add item out_key: "" to(out_row)
+            endif
+        endfor
+        add out_row to(out_rows)
+    endfor
+    return df.make(out_rows, new_cols)
+endfunction
+
+create function df.filter.equals(frame, column, expected)
+    return df.make(table.filter.equals(df.rows(frame), column, expected), df.columns(frame))
+endfunction
+
+create function df.filter.greater(frame, column, threshold)
+    return df.make(table.filter.greater(df.rows(frame), column, threshold), df.columns(frame))
+endfunction
+
+create function df.filter.less(frame, column, threshold)
+    return df.make(table.filter.less(df.rows(frame), column, threshold), df.columns(frame))
+endfunction
+
+create function df.sort.by.number(frame, column, ascending)
+    return df.make(table.sort.by.number(df.rows(frame), column, ascending), df.columns(frame))
+endfunction
+
+create function df.group.count(frame, column)
+    return table.group.count(df.rows(frame), column)
+endfunction
+
+create function df.group.sum(frame, group_column, value_column)
+    return table.group.sum(df.rows(frame), group_column, value_column)
+endfunction
+
+create function df.group.mean(frame, group_column, value_column)
+    return table.group.mean(df.rows(frame), group_column, value_column)
+endfunction
+
+create function df.drop.missing(frame, required_columns)
+    return df.make(table.drop.missing(df.rows(frame), required_columns), df.columns(frame))
+endfunction
+
+create function df.fill.missing(frame, column, default_value)
+    return df.make(table.fill.missing(df.rows(frame), column, default_value), df.columns(frame))
+endfunction
+
+create function df.inner.join(left_frame, right_frame, left_key, right_key, right_prefix)
+    set rows to table.inner.join(df.rows(left_frame), df.rows(right_frame), left_key, right_key, right_prefix)
+    return df.from.rows(rows)
+endfunction
+
+create function df.left.join(left_frame, right_frame, left_key, right_key, right_prefix)
+    set rows to table.left.join(df.rows(left_frame), df.rows(right_frame), left_key, right_key, right_prefix)
+    return df.from.rows(rows)
+endfunction
+
+create function df.to.csv(frame, path)
+    write.csv.table(path, df.rows(frame))
+    return true
+endfunction
+
+create function df.to.csv.with.delimiter(frame, path, delimiter)
+    csv.write.table.to.file(path, df.rows(frame), delimiter)
+    return true
+endfunction
+
+create function df.summary.number(frame, column)
+    set values to []
+    for each row in(df.rows(frame))
+        if column in(row) then
+            try
+                add cast get item column from(row) to float to(values)
+            otherwise
+            endtry
+        endif
+    endfor
+
+    set out to {}
+    add item "count": length(values) to(out)
+    if length(values) is equal to 0 then
+        add item "sum": 0.0 to(out)
+        add item "mean": 0.0 to(out)
+        add item "min": 0.0 to(out)
+        add item "max": 0.0 to(out)
+        return out
+    endif
+
+    set running_sum to 0.0
+    set lo to element 0 of(values)
+    set hi to element 0 of(values)
+    for each value in(values)
+        set v to cast value to float
+        set running_sum to running_sum + v
+        set lo to min(lo, v)
+        set hi to max(hi, v)
+    endfor
+
+    add item "sum": running_sum to(out)
+    add item "mean": mean(values) to(out)
+    add item "min": lo to(out)
+    add item "max": hi to(out)
+    return out
+endfunction
+
+create function dataframe.from.rows(rows)
+    return df.from.rows(rows)
+endfunction
+
+create function dataframe.from.csv(path)
+    return df.from.csv(path)
+endfunction
+
+create function dataframe.columns(frame)
+    return df.columns(frame)
+endfunction
+
+create function dataframe.row.count(frame)
+    return df.row.count(frame)
+endfunction
+
+create function dataframe.select.columns(frame, columns)
+    return df.select.columns(frame, columns)
+endfunction
+
+create function dataframe.filter.equals(frame, column, expected)
+    return df.filter.equals(frame, column, expected)
+endfunction
+
+create function dataframe.to.csv(frame, path)
+    return df.to.csv(frame, path)
+endfunction
+
+create function dataframe.summary.number(frame, column)
+    return df.summary.number(frame, column)
+endfunction
+
+offer df.empty
+offer df.from.rows
+offer df.from.csv
+offer df.from.csv.with.delimiter
+offer df.rows
+offer df.columns
+offer df.row.count
+offer df.column.count
+offer df.info
+offer df.head
+offer df.select.columns
+offer df.drop.columns
+offer df.rename.column
+offer df.filter.equals
+offer df.filter.greater
+offer df.filter.less
+offer df.sort.by.number
+offer df.group.count
+offer df.group.sum
+offer df.group.mean
+offer df.drop.missing
+offer df.fill.missing
+offer df.inner.join
+offer df.left.join
+offer df.to.csv
+offer df.to.csv.with.delimiter
+offer df.summary.number
+
+offer dataframe.from.rows
+offer dataframe.from.csv
+offer dataframe.columns
+offer dataframe.row.count
+offer dataframe.select.columns
+offer dataframe.filter.equals
+offer dataframe.to.csv
+offer dataframe.summary.number
+
+# underscore compatibility aliases
+create function df_empty()
+    return df.empty()
+endfunction
+offer df_empty
+
+create function df_from_rows(rows)
+    return df.from.rows(rows)
+endfunction
+offer df_from_rows
+
+create function df_from_csv(path)
+    return df.from.csv(path)
+endfunction
+offer df_from_csv
+
+create function df_columns(frame)
+    return df.columns(frame)
+endfunction
+offer df_columns
+
+create function df_row_count(frame)
+    return df.row.count(frame)
+endfunction
+offer df_row_count
+
+create function df_select_columns(frame, columns)
+    return df.select.columns(frame, columns)
+endfunction
+offer df_select_columns
+
+create function df_filter_equals(frame, column, expected)
+    return df.filter.equals(frame, column, expected)
+endfunction
+offer df_filter_equals
+
+create function df_filter_greater(frame, column, threshold)
+    return df.filter.greater(frame, column, threshold)
+endfunction
+offer df_filter_greater
+
+create function df_filter_less(frame, column, threshold)
+    return df.filter.less(frame, column, threshold)
+endfunction
+offer df_filter_less
+
+create function df_sort_by_number(frame, column, ascending)
+    return df.sort.by.number(frame, column, ascending)
+endfunction
+offer df_sort_by_number
+
+create function df_group_count(frame, column)
+    return df.group.count(frame, column)
+endfunction
+offer df_group_count
+
+create function df_group_sum(frame, group_column, value_column)
+    return df.group.sum(frame, group_column, value_column)
+endfunction
+offer df_group_sum
+
+create function df_group_mean(frame, group_column, value_column)
+    return df.group.mean(frame, group_column, value_column)
+endfunction
+offer df_group_mean
+
+create function df_to_csv(frame, path)
+    return df.to.csv(frame, path)
+endfunction
+offer df_to_csv
+
+create function df_summary_number(frame, column)
+    return df.summary.number(frame, column)
+endfunction
+offer df_summary_number
+
+create function dataframe_from_rows(rows)
+    return dataframe.from.rows(rows)
+endfunction
+offer dataframe_from_rows
+
+create function dataframe_from_csv(path)
+    return dataframe.from.csv(path)
+endfunction
+offer dataframe_from_csv
+end

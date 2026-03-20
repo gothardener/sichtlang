@@ -1,0 +1,490 @@
+start
+create library csv
+
+create function csv.default.delimiter()
+    return ","
+endfunction
+
+create function csv.default.quote()
+    return character 0 of("'")
+endfunction
+
+create function csv.pick.delimiter(delimiter)
+    if length(delimiter) is equal to 0 then
+        return csv.default.delimiter()
+    endif
+    return delimiter
+endfunction
+
+create function csv.is.alnum(ch)
+    return ch in("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+endfunction
+
+create function csv.is.quote.candidate(ch, delimiter)
+    if ch is equal to "" then
+        return false
+    endif
+    if csv.is.alnum(ch) then
+        return false
+    endif
+    if ch is equal to " " then
+        return false
+    endif
+    if csv.is.line.break(ch) then
+        return false
+    endif
+    if ch is equal to "-" then
+        return false
+    endif
+    if ch in(delimiter) then
+        return false
+    endif
+    return true
+endfunction
+
+create function csv.is.line.break(ch)
+    if ch in("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 !@#$%^&*()-_=+[]{};:',.<>/?|") then
+        return false
+    endif
+    return true
+endfunction
+
+create function csv.matches.at(text, pattern, start_index)
+    set start_i to cast start_index to int
+    set n to length(text)
+    set m to length(pattern)
+    if m is equal to 0 then
+        return true
+    endif
+    if start_i is less than 0 then
+        return false
+    endif
+    if start_i + m is greater than n then
+        return false
+    endif
+
+    set i to 0
+    while i is less than m
+        if character (start_i + i) of(text) is not equal to character i of(pattern) then
+            return false
+        endif
+        set i to i + 1
+    endwhile
+    return true
+endfunction
+
+create function csv.contains(text, needle)
+    set n to length(text)
+    set m to length(needle)
+    if m is equal to 0 then
+        return true
+    endif
+    if m is greater than n then
+        return false
+    endif
+    set i to 0
+    while i is less than n - m + 1
+        if csv.matches.at(text, needle, i) then
+            return true
+        endif
+        set i to i + 1
+    endwhile
+    return false
+endfunction
+
+create function csv.split.lines(text)
+    set lines to []
+    set current to ""
+    set i to 0
+    set n to length(text)
+    set last_was_break to false
+    while i is less than n
+        set ch to character i of(text)
+        if csv.is.line.break(ch) then
+            if last_was_break is equal to false then
+                add current to(lines)
+                set current to ""
+            endif
+            set last_was_break to true
+        otherwise
+            set current to current + ch
+            set last_was_break to false
+        endif
+        set i to i + 1
+    endwhile
+    add current to(lines)
+    return lines
+endfunction
+
+create function csv.parse.line(line, delimiter)
+    set d to csv.pick.delimiter(delimiter)
+    set dlen to length(d)
+    set n to length(line)
+
+    set fields to []
+    set current to ""
+    set in_quote to false
+    set quote_char to ""
+
+    set i to 0
+    while i is less than n
+        set ch to character i of(line)
+
+        if in_quote then
+            if ch is equal to quote_char then
+                set next_is_quote to false
+                if i + 1 is less than n and character (i + 1) of(line) is equal to quote_char then
+                    set next_is_quote to true
+                endif
+                if next_is_quote then
+                    set current to current + quote_char
+                    set i to i + 1
+                endif
+                if next_is_quote is equal to false then
+                    set in_quote to false
+                endif
+            otherwise
+                set current to current + ch
+            endif
+        otherwise
+            set is_delimiter to csv.matches.at(line, d, i)
+            if is_delimiter then
+                add current to(fields)
+                set current to ""
+                set i to i + dlen - 1
+            endif
+            if is_delimiter is equal to false then
+                set open_quote to false
+                if length(current) is equal to 0 and csv.is.quote.candidate(ch, d) then
+                    set open_quote to true
+                endif
+                if open_quote then
+                    set in_quote to true
+                    set quote_char to ch
+                otherwise
+                    set current to current + ch
+                endif
+            endif
+        endif
+
+        set i to i + 1
+    endwhile
+
+    add current to(fields)
+    return fields
+endfunction
+
+create function csv.read.rows.from.text(text, delimiter)
+    set rows to []
+    set lines to csv.split.lines(text)
+    for each line in(lines)
+        if length(line) is greater than 0 then
+            add csv.parse.line(line, delimiter) to(rows)
+        endif
+    endfor
+    return rows
+endfunction
+
+create function csv.read.table.from.text(text, delimiter)
+    set rows to csv.read.rows.from.text(text, delimiter)
+    set n to length(rows)
+    if n is equal to 0 then
+        return []
+    endif
+
+    set headers to element 0 of(rows)
+    set out to []
+    set i to 1
+    while i is less than n
+        set values to element i of(rows)
+        set row to {}
+        set j to 0
+        while j is less than length(headers)
+            set key to element j of(headers)
+            set cell_value to ""
+            if j is less than length(values) then
+                set cell_value to element j of(values)
+            endif
+            add item key: cell_value to(row)
+            set j to j + 1
+        endwhile
+        add row to(out)
+        set i to i + 1
+    endwhile
+    return out
+endfunction
+
+create function csv.read.rows.from.file(path, delimiter)
+    return csv.read.rows.from.text(read file path, delimiter)
+endfunction
+
+create function csv.read.table.from.file(path, delimiter)
+    return csv.read.table.from.text(read file path, delimiter)
+endfunction
+
+create function csv.escape.quotes(text, quote_char)
+    set out to ""
+    set i to 0
+    set n to length(text)
+    while i is less than n
+        set ch to character i of(text)
+        if ch is equal to quote_char then
+            set out to out + quote_char + quote_char
+        otherwise
+            set out to out + ch
+        endif
+        set i to i + 1
+    endwhile
+    return out
+endfunction
+
+create function csv.escape.cell(cell, delimiter, quote_char)
+    set text to ""
+    try
+        set text to cell + ""
+    otherwise
+        return "<non-string>"
+    endtry
+
+    set needs_quote to false
+    if csv.contains(text, delimiter) then
+        set needs_quote to true
+    endif
+    set i to 0
+    while i is less than length(text)
+        if csv.is.line.break(character i of(text)) then
+            set needs_quote to true
+        endif
+        set i to i + 1
+    endwhile
+    if needs_quote then
+    otherwise
+    endif
+    if needs_quote is equal to false then
+        if quote_char in(text) then
+            set needs_quote to true
+        endif
+    endif
+    if needs_quote is equal to false then
+        return text
+    endif
+    return quote_char + csv.escape.quotes(text, quote_char) + quote_char
+endfunction
+
+create function csv.line.break.text()
+    return "\n"
+endfunction
+
+create function csv.join.fields(fields, delimiter, quote_char)
+    set out to ""
+    set first to true
+    for each cell in(fields)
+        if first is equal to false then
+            set out to out + delimiter
+        endif
+        set first to false
+        set out to out + csv.escape.cell(cell, delimiter, quote_char)
+    endfor
+    return out
+endfunction
+
+create function csv.join.lines(lines)
+    set out to ""
+    set first to true
+    for each line in(lines)
+        if first is equal to false then
+            set out to out + csv.line.break.text()
+        endif
+        set first to false
+        set out to out + line
+    endfor
+    return out
+endfunction
+
+create function csv.write.rows.to.text(rows, delimiter)
+    set d to csv.pick.delimiter(delimiter)
+    set q to csv.default.quote()
+    set lines to []
+    for each row in(rows)
+        add csv.join.fields(row, d, q) to(lines)
+    endfor
+    return csv.join.lines(lines)
+endfunction
+
+create function csv.table.headers(rows)
+    set headers to []
+    if length(rows) is equal to 0 then
+        return headers
+    endif
+
+    set first_row to element 0 of(rows)
+    for each key in(first_row)
+        add key to(headers)
+    endfor
+    return headers
+endfunction
+
+create function csv.write.table.to.text(rows, delimiter)
+    set d to csv.pick.delimiter(delimiter)
+    set q to csv.default.quote()
+    set headers to csv.table.headers(rows)
+    if length(headers) is equal to 0 then
+        return ""
+    endif
+
+    set lines to []
+    add csv.join.fields(headers, d, q) to(lines)
+
+    for each row in(rows)
+        set values to []
+        for each key in(headers)
+            set cell_value to ""
+            if key in(row) then
+                set cell_value to get item key from(row)
+            endif
+            add cell_value to(values)
+        endfor
+        add csv.join.fields(values, d, q) to(lines)
+    endfor
+
+    return csv.join.lines(lines)
+endfunction
+
+create function csv.write.rows.to.file(path, rows, delimiter)
+    write file path to csv.write.rows.to.text(rows, delimiter)
+endfunction
+
+create function csv.write.table.to.file(path, rows, delimiter)
+    write file path to csv.write.table.to.text(rows, delimiter)
+endfunction
+
+create function read.csv.rows(path)
+    return csv.read.rows.from.file(path, ",")
+endfunction
+
+create function read.csv.table(path)
+    return csv.read.table.from.file(path, ",")
+endfunction
+
+create function write.csv.rows(path, rows)
+    csv.write.rows.to.file(path, rows, ",")
+endfunction
+
+create function write.csv.table(path, rows)
+    csv.write.table.to.file(path, rows, ",")
+endfunction
+
+offer csv.parse.line
+offer csv.read.rows.from.text
+offer csv.read.table.from.text
+offer csv.read.rows.from.file
+offer csv.read.table.from.file
+offer csv.write.rows.to.text
+offer csv.write.table.to.text
+offer csv.write.rows.to.file
+offer csv.write.table.to.file
+offer read.csv.rows
+offer read.csv.table
+offer write.csv.rows
+offer write.csv.table
+
+# underscore compatibility aliases
+create function csv_default_delimiter()
+    return csv.default.delimiter()
+endfunction
+create function csv_default_quote()
+    return csv.default.quote()
+endfunction
+create function csv_pick_delimiter(delimiter)
+    return csv.pick.delimiter(delimiter)
+endfunction
+create function csv_is_alnum(ch)
+    return csv.is.alnum(ch)
+endfunction
+create function csv_is_quote_candidate(ch, delimiter)
+    return csv.is.quote.candidate(ch, delimiter)
+endfunction
+create function csv_is_line_break(ch)
+    return csv.is.line.break(ch)
+endfunction
+create function csv_matches_at(text, pattern, start_index)
+    return csv.matches.at(text, pattern, start_index)
+endfunction
+create function csv_contains(text, needle)
+    return csv.contains(text, needle)
+endfunction
+create function csv_split_lines(text)
+    return csv.split.lines(text)
+endfunction
+create function csv_parse_line(line, delimiter)
+    return csv.parse.line(line, delimiter)
+endfunction
+offer csv_parse_line
+create function csv_read_rows_from_text(text, delimiter)
+    return csv.read.rows.from.text(text, delimiter)
+endfunction
+offer csv_read_rows_from_text
+create function csv_read_table_from_text(text, delimiter)
+    return csv.read.table.from.text(text, delimiter)
+endfunction
+offer csv_read_table_from_text
+create function csv_read_rows_from_file(path, delimiter)
+    return csv.read.rows.from.file(path, delimiter)
+endfunction
+offer csv_read_rows_from_file
+create function csv_read_table_from_file(path, delimiter)
+    return csv.read.table.from.file(path, delimiter)
+endfunction
+offer csv_read_table_from_file
+create function csv_escape_quotes(text, quote_char)
+    return csv.escape.quotes(text, quote_char)
+endfunction
+create function csv_escape_cell(cell, delimiter, quote_char)
+    return csv.escape.cell(cell, delimiter, quote_char)
+endfunction
+create function csv_line_break_text()
+    return csv.line.break.text()
+endfunction
+create function csv_join_fields(fields, delimiter, quote_char)
+    return csv.join.fields(fields, delimiter, quote_char)
+endfunction
+create function csv_join_lines(lines)
+    return csv.join.lines(lines)
+endfunction
+create function csv_write_rows_to_text(rows, delimiter)
+    return csv.write.rows.to.text(rows, delimiter)
+endfunction
+offer csv_write_rows_to_text
+create function csv_table_headers(rows)
+    return csv.table.headers(rows)
+endfunction
+create function csv_write_table_to_text(rows, delimiter)
+    return csv.write.table.to.text(rows, delimiter)
+endfunction
+offer csv_write_table_to_text
+create function csv_write_rows_to_file(path, rows, delimiter)
+    return csv.write.rows.to.file(path, rows, delimiter)
+endfunction
+offer csv_write_rows_to_file
+create function csv_write_table_to_file(path, rows, delimiter)
+    return csv.write.table.to.file(path, rows, delimiter)
+endfunction
+offer csv_write_table_to_file
+create function read_csv_rows(path)
+    return read.csv.rows(path)
+endfunction
+offer read_csv_rows
+create function read_csv_table(path)
+    return read.csv.table(path)
+endfunction
+offer read_csv_table
+create function write_csv_rows(path, rows)
+    return write.csv.rows(path, rows)
+endfunction
+offer write_csv_rows
+create function write_csv_table(path, rows)
+    return write.csv.table(path, rows)
+endfunction
+offer write_csv_table
+end
+

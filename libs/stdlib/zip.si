@@ -1,0 +1,15 @@
+start
+create library zip
+
+create function zip.extract(zip_path, dest_dir)
+    return native.zip.extract(zip_path, dest_dir)
+endfunction
+
+offer zip.extract
+
+
+create function zip_extract(zip_path, dest_dir)
+    return zip.extract(zip_path, dest_dir)
+endfunction
+offer zip_extract
+end

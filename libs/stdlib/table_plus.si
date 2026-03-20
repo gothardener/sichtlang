@@ -1,0 +1,191 @@
+﻿start
+create library table_plus
+
+load library "table"
+take table_copy from table
+take table_inner_join from table
+
+load library "math"
+take mean from math
+
+create function table.group.sum(rows, group_column, value_column)
+    set groups to {}
+    for each row in(rows)
+        if group_column in(row) and value_column in(row) then
+            set key to get item group_column from(row)
+            set value to cast get item value_column from(row) to float
+            try
+                if key in(groups) then
+                    add item key: get item key from(groups) + value to(groups)
+                otherwise
+                    add item key: value to(groups)
+                endif
+            otherwise
+            endtry
+        endif
+    endfor
+    return groups
+endfunction
+
+create function table.group.mean(rows, group_column, value_column)
+    set sums to {}
+    set counts to {}
+
+    for each row in(rows)
+        if group_column in(row) and value_column in(row) then
+            set key to get item group_column from(row)
+            set value to cast get item value_column from(row) to float
+            try
+                if key in(sums) then
+                    add item key: get item key from(sums) + value to(sums)
+                    add item key: get item key from(counts) + 1 to(counts)
+                otherwise
+                    add item key: value to(sums)
+                    add item key: 1 to(counts)
+                endif
+            otherwise
+            endtry
+        endif
+    endfor
+
+    set means to {}
+    for each key in(sums)
+        set c to get item key from(counts)
+        if c is greater than 0 then
+            add item key: get item key from(sums) / cast c to float to(means)
+        endif
+    endfor
+    return means
+endfunction
+
+create function table.drop.missing(rows, required_columns)
+    set out to []
+    for each row in(rows)
+        set ok to true
+        for each key in(required_columns)
+            if key in(row) then
+                if get item key from(row) is equal to "" then
+                    set ok to false
+                endif
+            otherwise
+                set ok to false
+            endif
+        endfor
+        if ok then
+            add row to(out)
+        endif
+    endfor
+    return out
+endfunction
+
+create function table.fill.missing(rows, column, default_value)
+    set out to table_copy(rows)
+    set i to 0
+    while i is less than length(out)
+        set row to element i of(out)
+        if column in(row) then
+            if get item column from(row) is equal to "" then
+                add item column: default_value to(row)
+            endif
+        otherwise
+            add item column: default_value to(row)
+        endif
+        set element i of(out) to row
+        set i to i + 1
+    endwhile
+    return out
+endfunction
+
+create function table.left.join(left_rows, right_rows, left_key, right_key, right_prefix)
+    set joined to table_inner_join(left_rows, right_rows, left_key, right_key, right_prefix)
+    set out to table_copy(joined)
+
+    for each left_row in(left_rows)
+        set found to false
+        if left_key in(left_row) then
+            set left_value to get item left_key from(left_row)
+            for each row in(joined)
+                if left_key in(row) then
+                    if get item left_key from(row) is equal to left_value then
+                        set found to true
+                    endif
+                endif
+            endfor
+        endif
+        if found is equal to false then
+            add left_row to(out)
+        endif
+    endfor
+    return out
+endfunction
+
+create function table.pivot.sum(rows, index_column, column_column, value_column)
+    set row_map to {}
+    set index_order to []
+
+    for each row in(rows)
+        if index_column in(row) and column_column in(row) and value_column in(row) then
+            set idx to get item index_column from(row)
+            set col to get item column_column from(row)
+            set val to cast get item value_column from(row) to float
+            try
+                if idx in(row_map) then
+                    set pivot_row to get item idx from(row_map)
+                otherwise
+                    set pivot_row to {}
+                    add item index_column: idx to(pivot_row)
+                    add item idx: pivot_row to(row_map)
+                    add idx to(index_order)
+                endif
+
+                if col in(pivot_row) then
+                    add item col: get item col from(pivot_row) + val to(pivot_row)
+                otherwise
+                    add item col: val to(pivot_row)
+                endif
+                add item idx: pivot_row to(row_map)
+            otherwise
+            endtry
+        endif
+    endfor
+
+    set out to []
+    for each idx in(index_order)
+        add get item idx from(row_map) to(out)
+    endfor
+    return out
+endfunction
+
+offer table.group.sum
+offer table.group.mean
+offer table.drop.missing
+offer table.fill.missing
+offer table.left.join
+offer table.pivot.sum
+
+# underscore compatibility aliases
+create function table_group_sum(rows, group_column, value_column)
+    return table.group.sum(rows, group_column, value_column)
+endfunction
+offer table_group_sum
+create function table_group_mean(rows, group_column, value_column)
+    return table.group.mean(rows, group_column, value_column)
+endfunction
+offer table_group_mean
+create function table_drop_missing(rows, required_columns)
+    return table.drop.missing(rows, required_columns)
+endfunction
+offer table_drop_missing
+create function table_fill_missing(rows, column, default_value)
+    return table.fill.missing(rows, column, default_value)
+endfunction
+offer table_fill_missing
+create function table_left_join(left_rows, right_rows, left_key, right_key, right_prefix)
+    return table.left.join(left_rows, right_rows, left_key, right_key, right_prefix)
+endfunction
+offer table_left_join
+create function table_pivot_sum(rows, index_column, column_column, value_column)
+    return table.pivot.sum(rows, index_column, column_column, value_column)
+endfunction
+offer table_pivot_sum
+end

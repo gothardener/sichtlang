@@ -1,0 +1,737 @@
+start
+create library json
+
+create function json.default.quote()
+    return character 0 of("'")
+endfunction
+
+create function json.backslash()
+    return character 0 of("\\")
+endfunction
+
+create function json.node.with.quote(type_name, val, quote_char)
+    set node to {}
+    add item "type": type_name to(node)
+    add item "value": val to(node)
+    add item "quote": quote_char to(node)
+    return node
+endfunction
+
+create function json.node(type_name, val)
+    return json.node.with.quote(type_name, val, json.default.quote())
+endfunction
+
+create function json.null()
+    return json.node("null", 0)
+endfunction
+
+create function json.is.null(node)
+    return get item "type" from(node) is equal to "null"
+endfunction
+
+create function json.result(ok, val, error_message)
+    set r to {}
+    add item "ok": ok to(r)
+    add item "value": val to(r)
+    add item "error": error_message to(r)
+    return r
+endfunction
+
+create function json.ok(result)
+    return get item "ok" from(result)
+endfunction
+
+create function json.value(result)
+    return get item "value" from(result)
+endfunction
+
+create function json.error(result)
+    return get item "error" from(result)
+endfunction
+
+create function json.state.new(text)
+    set s to {}
+    set txt to text
+    add item "text": txt to(s)
+    add item "idx": 0 to(s)
+    add item "len": length(txt) to(s)
+    add item "error": false to(s)
+    add item "message": "" to(s)
+    add item "quote": "" to(s)
+    return s
+endfunction
+
+create function json.state.text(state)
+    return get item "text" from(state)
+endfunction
+
+create function json.state.index(state)
+    return get item "idx" from(state)
+endfunction
+
+create function json.state.length(state)
+    return get item "len" from(state)
+endfunction
+
+create function json.state.quote(state)
+    return get item "quote" from(state)
+endfunction
+
+create function json.state.set.index(state, idx)
+    add item "idx": idx to(state)
+    return idx
+endfunction
+
+create function json.state.set.quote(state, quote_char)
+    add item "quote": quote_char to(state)
+    return quote_char
+endfunction
+
+create function json.state.has.error(state)
+    return get item "error" from(state)
+endfunction
+
+create function json.state.error.message(state)
+    return get item "message" from(state)
+endfunction
+
+create function json.fail(state, message)
+    add item "error": true to(state)
+    add item "message": message to(state)
+    return false
+endfunction
+
+create function json.node.from.state(state, type_name, val)
+    set q to json.state.quote(state)
+    if q is equal to "" then
+        set q to json.default.quote()
+    endif
+    return json.node.with.quote(type_name, val, q)
+endfunction
+
+create function json.peek(state)
+    set idx to json.state.index(state)
+    set len to json.state.length(state)
+    if idx is greater than or equal to len then
+        return ""
+    endif
+    return character idx of(json.state.text(state))
+endfunction
+
+create function json.consume(state)
+    set ch to json.peek(state)
+    set idx to json.state.index(state)
+    json.state.set.index(state, idx + 1)
+    return ch
+endfunction
+
+create function json.skip.ws(state)
+    set ch to json.peek(state)
+    while ch is equal to " " or ch is equal to "\n" or ch is equal to "\r" or ch is equal to "\t"
+        json.consume(state)
+        set ch to json.peek(state)
+    endwhile
+    return true
+endfunction
+
+create function json.expect.char(state, expected, context)
+    set ch to json.peek(state)
+    if ch is not equal to expected then
+        json.fail(state, "Expected `" + expected + "` " + context)
+        return false
+    endif
+    json.consume(state)
+    return true
+endfunction
+
+create function json.match.literal(state, literal)
+    set idx to json.state.index(state)
+    set len to json.state.length(state)
+    set n to length(literal)
+    if idx + n is greater than len then
+        return false
+    endif
+
+    set text to json.state.text(state)
+    set i to 0
+    while i is less than n
+        if character (idx + i) of(text) is not equal to character i of(literal) then
+            return false
+        endif
+        set i to i + 1
+    endwhile
+
+    json.state.set.index(state, idx + n)
+    return true
+endfunction
+
+create function json.is.digit(ch)
+    return ch in("0123456789")
+endfunction
+
+create function json.is.num.char(ch)
+    return ch in("0123456789+-.eE")
+endfunction
+
+create function json.is.alnum(ch)
+    return ch in("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+endfunction
+
+create function json.is.quote.candidate(ch)
+    if ch is equal to "" then
+        return false
+    endif
+    if json.is.alnum(ch) then
+        return false
+    endif
+    if ch is equal to " " or ch is equal to "\n" or ch is equal to "\r" or ch is equal to "\t" then
+        return false
+    endif
+    if ch in("{}[],:") then
+        return false
+    endif
+    if ch is equal to "-" then
+        return false
+    endif
+    return true
+endfunction
+
+create function json.parse.string(state)
+    set opener to json.peek(state)
+    if opener is equal to "" then
+        json.fail(state, "Expected a string.")
+        return json.null()
+    endif
+    if json.state.quote(state) is equal to "" then
+        if json.is.quote.candidate(opener) is equal to false then
+            json.fail(state, "Expected a quoted string.")
+            return json.null()
+        endif
+    otherwise if opener is not equal to json.state.quote(state) then
+        json.fail(state, "Expected a quoted string.")
+        return json.null()
+    endif
+
+    json.consume(state)
+    if json.state.quote(state) is equal to "" then
+        json.state.set.quote(state, opener)
+    endif
+
+    set bs to json.backslash()
+    set out to ""
+
+    while true
+        set ch to json.peek(state)
+        if ch is equal to "" then
+            json.fail(state, "Unterminated string.")
+            return json.null()
+        endif
+
+        json.consume(state)
+
+        if ch is equal to opener then
+            return json.node.from.state(state, "string", out)
+        endif
+
+        if ch is equal to bs then
+            set esc to json.peek(state)
+            if esc is equal to "" then
+                json.fail(state, "Unterminated escape sequence.")
+                return json.null()
+            endif
+            json.consume(state)
+            if esc is equal to opener then
+                set out to out + opener
+            otherwise if esc is equal to bs then
+                set out to out + bs
+            otherwise
+                set out to out + esc
+            endif
+        otherwise
+            set out to out + ch
+        endif
+    endwhile
+endfunction
+
+create function json.parse.number(state)
+    set start_idx to json.state.index(state)
+    while json.is.num.char(json.peek(state))
+        json.consume(state)
+    endwhile
+    set stop_idx to json.state.index(state)
+
+    if stop_idx is equal to start_idx then
+        json.fail(state, "Expected a number.")
+        return json.null()
+    endif
+
+    set text to json.state.text(state)
+    set token to ""
+    set i to start_idx
+    while i is less than stop_idx
+        set token to token + character i of(text)
+        set i to i + 1
+    endwhile
+
+    set cast_ok to true
+    try
+        set _parsed to cast token to float
+    otherwise
+        set cast_ok to false
+    endtry
+
+    if cast_ok is equal to false then
+        json.fail(state, "Invalid number token: " + token)
+        return json.null()
+    endif
+
+    return json.node.from.state(state, "number", token)
+endfunction
+
+create function json.parse.array(state)
+    if json.expect.char(state, "[", "to start an array") is equal to false then
+        return json.null()
+    endif
+
+    set values to []
+    json.skip.ws(state)
+
+    if json.peek(state) is equal to "]" then
+        json.consume(state)
+        return json.node.from.state(state, "array", values)
+    endif
+
+    while true
+        set value_node to json.parse.value(state)
+        if json.state.has.error(state) then
+            return json.null()
+        endif
+        add value_node to(values)
+
+        json.skip.ws(state)
+        set sep to json.peek(state)
+        if sep is equal to "," then
+            json.consume(state)
+            json.skip.ws(state)
+        otherwise if sep is equal to "]" then
+            json.consume(state)
+            return json.node.from.state(state, "array", values)
+        otherwise
+            json.fail(state, "Expected `,` or `]` in array.")
+            return json.null()
+        endif
+    endwhile
+endfunction
+
+create function json.parse.object(state)
+    if json.expect.char(state, "{", "to start an object") is equal to false then
+        return json.null()
+    endif
+
+    set obj to {}
+    json.skip.ws(state)
+
+    if json.peek(state) is equal to "}" then
+        json.consume(state)
+        return json.node.from.state(state, "object", obj)
+    endif
+
+    while true
+        set key_node to json.parse.string(state)
+        if json.state.has.error(state) then
+            return json.null()
+        endif
+        set key to get item "value" from(key_node)
+
+        json.skip.ws(state)
+        if json.expect.char(state, ":", "after object key") is equal to false then
+            return json.null()
+        endif
+        json.skip.ws(state)
+
+        set value_node to json.parse.value(state)
+        if json.state.has.error(state) then
+            return json.null()
+        endif
+        add item key: value_node to(obj)
+
+        json.skip.ws(state)
+        set sep to json.peek(state)
+        if sep is equal to "," then
+            json.consume(state)
+            json.skip.ws(state)
+        otherwise if sep is equal to "}" then
+            json.consume(state)
+            return json.node.from.state(state, "object", obj)
+        otherwise
+            json.fail(state, "Expected `,` or `}` in object.")
+            return json.null()
+        endif
+    endwhile
+endfunction
+
+create function json.parse.value(state)
+    if json.state.has.error(state) then
+        return json.null()
+    endif
+
+    json.skip.ws(state)
+    set ch to json.peek(state)
+
+    if ch is equal to "" then
+        json.fail(state, "Unexpected end of input.")
+        return json.null()
+    endif
+
+    if ch is equal to "{" then
+        return json.parse.object(state)
+    endif
+    if ch is equal to "[" then
+        return json.parse.array(state)
+    endif
+    if ch is equal to "t" then
+        if json.match.literal(state, "true") then
+            return json.node.from.state(state, "boolean", true)
+        endif
+        json.fail(state, "Invalid token near `t`.")
+        return json.null()
+    endif
+    if ch is equal to "f" then
+        if json.match.literal(state, "false") then
+            return json.node.from.state(state, "boolean", false)
+        endif
+        json.fail(state, "Invalid token near `f`.")
+        return json.null()
+    endif
+    if ch is equal to "n" then
+        if json.match.literal(state, "null") then
+            return json.node.from.state(state, "null", 0)
+        endif
+        json.fail(state, "Invalid token near `n`.")
+        return json.null()
+    endif
+    if ch is equal to "-" or json.is.digit(ch) then
+        return json.parse.number(state)
+    endif
+
+    return json.parse.string(state)
+endfunction
+
+create function json.parse(text)
+    set state to json.state.new(text)
+    json.skip.ws(state)
+    set node to json.parse.value(state)
+    json.skip.ws(state)
+
+    if json.state.has.error(state) then
+        return json.result(false, json.null(), json.state.error.message(state))
+    endif
+
+    if json.state.index(state) is not equal to json.state.length(state) then
+        return json.result(false, json.null(), "Trailing characters after valid JSON.")
+    endif
+
+    return json.result(true, node, "")
+endfunction
+
+create function json.escape.string(text, quote_char)
+    set s to text
+    set out to ""
+    set i to 0
+    set n to length(s)
+    set bs to json.backslash()
+    while i is less than n
+        set ch to character i of(s)
+        if ch is equal to quote_char then
+            set out to out + bs + quote_char
+        otherwise if ch is equal to bs then
+            set out to out + bs + bs
+        otherwise
+            set out to out + ch
+        endif
+        set i to i + 1
+    endwhile
+    return out
+endfunction
+
+create function json.quote.string(text, quote_char)
+    return quote_char + json.escape.string(text, quote_char) + quote_char
+endfunction
+
+create function json.stringify.array(values)
+    set out to "["
+    set first to true
+    for each node in(values)
+        if first is equal to false then
+            set out to out + ","
+        endif
+        set first to false
+        set out to out + json.stringify(node)
+    endfor
+    return out + "]"
+endfunction
+
+create function json.stringify.object(obj, quote_char)
+    set out to "{"
+    set first to true
+    for each key in(obj)
+        if first is equal to false then
+            set out to out + ","
+        endif
+        set first to false
+        set value_node to get item key from(obj)
+        set out to out + json.quote.string(key, quote_char) + ":" + json.stringify(value_node)
+    endfor
+    return out + "}"
+endfunction
+
+create function json.stringify(node)
+    set t to get item "type" from(node)
+    set q to get item "quote" from(node)
+    if q is equal to "" then
+        set q to json.default.quote()
+    endif
+
+    if t is equal to "null" then
+        return "null"
+    endif
+    if t is equal to "boolean" then
+        if get item "value" from(node) then
+            return "true"
+        endif
+        return "false"
+    endif
+    if t is equal to "number" then
+        return get item "value" from(node)
+    endif
+    if t is equal to "string" then
+        return json.quote.string(get item "value" from(node), q)
+    endif
+    if t is equal to "array" then
+        return json.stringify.array(get item "value" from(node))
+    endif
+    if t is equal to "object" then
+        return json.stringify.object(get item "value" from(node), q)
+    endif
+    return "null"
+endfunction
+
+create function parse.json(text)
+    return json.parse(text)
+endfunction
+
+create function stringify.json(node)
+    return json.stringify(node)
+endfunction
+
+create function json.success(result)
+    return json.ok(result)
+endfunction
+
+create function json.data(result)
+    return json.value(result)
+endfunction
+
+create function json.error.message(result)
+    return json.error(result)
+endfunction
+
+create function json.make.node(type_name, val)
+    return json.node(type_name, val)
+endfunction
+
+create function json.make.null()
+    return json.null()
+endfunction
+
+create function json.is.null.value(node)
+    return json.is.null(node)
+endfunction
+
+offer json.node
+offer json.null
+offer json.is.null
+offer json.parse
+offer json.ok
+offer json.value
+offer json.error
+offer json.stringify
+offer json.escape.string
+offer json.quote.string
+offer parse.json
+offer stringify.json
+offer json.success
+offer json.data
+offer json.error.message
+offer json.make.node
+offer json.make.null
+offer json.is.null.value
+
+# underscore compatibility aliases
+create function json_default_quote()
+    return json.default.quote()
+endfunction
+create function json_backslash()
+    return json.backslash()
+endfunction
+create function json_node_with_quote(type_name, val, quote_char)
+    return json.node.with.quote(type_name, val, quote_char)
+endfunction
+create function json_node(type_name, val)
+    return json.node(type_name, val)
+endfunction
+offer json_node
+create function json_null()
+    return json.null()
+endfunction
+offer json_null
+create function json_is_null(node)
+    return json.is.null(node)
+endfunction
+offer json_is_null
+create function json_result(ok, val, error_message)
+    return json.result(ok, val, error_message)
+endfunction
+create function json_ok(result)
+    return json.ok(result)
+endfunction
+offer json_ok
+create function json_value(result)
+    return json.value(result)
+endfunction
+offer json_value
+create function json_error(result)
+    return json.error(result)
+endfunction
+offer json_error
+create function json_state_new(text)
+    return json.state.new(text)
+endfunction
+create function json_state_text(state)
+    return json.state.text(state)
+endfunction
+create function json_state_index(state)
+    return json.state.index(state)
+endfunction
+create function json_state_length(state)
+    return json.state.length(state)
+endfunction
+create function json_state_quote(state)
+    return json.state.quote(state)
+endfunction
+create function json_state_set_index(state, idx)
+    return json.state.set.index(state, idx)
+endfunction
+create function json_state_set_quote(state, quote_char)
+    return json.state.set.quote(state, quote_char)
+endfunction
+create function json_state_has_error(state)
+    return json.state.has.error(state)
+endfunction
+create function json_state_error_message(state)
+    return json.state.error.message(state)
+endfunction
+create function json_fail(state, message)
+    return json.fail(state, message)
+endfunction
+create function json_node_from_state(state, type_name, val)
+    return json.node.from.state(state, type_name, val)
+endfunction
+create function json_peek(state)
+    return json.peek(state)
+endfunction
+create function json_consume(state)
+    return json.consume(state)
+endfunction
+create function json_skip_ws(state)
+    return json.skip.ws(state)
+endfunction
+create function json_expect_char(state, expected, context)
+    return json.expect.char(state, expected, context)
+endfunction
+create function json_match_literal(state, literal)
+    return json.match.literal(state, literal)
+endfunction
+create function json_is_digit(ch)
+    return json.is.digit(ch)
+endfunction
+create function json_is_num_char(ch)
+    return json.is.num.char(ch)
+endfunction
+create function json_is_alnum(ch)
+    return json.is.alnum(ch)
+endfunction
+create function json_is_quote_candidate(ch)
+    return json.is.quote.candidate(ch)
+endfunction
+create function json_parse_string(state)
+    return json.parse.string(state)
+endfunction
+create function json_parse_number(state)
+    return json.parse.number(state)
+endfunction
+create function json_parse_array(state)
+    return json.parse.array(state)
+endfunction
+create function json_parse_object(state)
+    return json.parse.object(state)
+endfunction
+create function json_parse_value(state)
+    return json.parse.value(state)
+endfunction
+create function json_parse(text)
+    return json.parse(text)
+endfunction
+offer json_parse
+create function json_escape_string(text, quote_char)
+    return json.escape.string(text, quote_char)
+endfunction
+offer json_escape_string
+create function json_quote_string(text, quote_char)
+    return json.quote.string(text, quote_char)
+endfunction
+offer json_quote_string
+create function json_stringify_array(values)
+    return json.stringify.array(values)
+endfunction
+create function json_stringify_object(obj, quote_char)
+    return json.stringify.object(obj, quote_char)
+endfunction
+create function json_stringify(node)
+    return json.stringify(node)
+endfunction
+offer json_stringify
+create function parse_json(text)
+    return parse.json(text)
+endfunction
+offer parse_json
+create function stringify_json(node)
+    return stringify.json(node)
+endfunction
+offer stringify_json
+create function json_success(result)
+    return json.success(result)
+endfunction
+offer json_success
+create function json_data(result)
+    return json.data(result)
+endfunction
+offer json_data
+create function json_error_message(result)
+    return json.error.message(result)
+endfunction
+offer json_error_message
+create function json_make_node(type_name, val)
+    return json.make.node(type_name, val)
+endfunction
+offer json_make_node
+create function json_make_null()
+    return json.make.null()
+endfunction
+offer json_make_null
+create function json_is_null_value(node)
+    return json.is.null.value(node)
+endfunction
+offer json_is_null_value
+end
+

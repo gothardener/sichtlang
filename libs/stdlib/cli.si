@@ -1,0 +1,154 @@
+﻿start
+create library cli
+
+load library "strings"
+take string_starts_with from strings
+take string_contains from strings
+take string_split from strings
+take string_substring from strings
+
+create function cli.new.result()
+    set result to {}
+    add item "options": {} to(result)
+    add item "flags": [] to(result)
+    add item "positionals": [] to(result)
+    return result
+endfunction
+
+create function cli.parse(args)
+    set result to cli.new.result()
+    set options to get item "options" from(result)
+    set flags to get item "flags" from(result)
+    set positionals to get item "positionals" from(result)
+
+    set i to 0
+    set n to length(args)
+    while i is less than n
+        set arg to element i of(args)
+
+        if string_starts_with(arg, "--") then
+            if string_contains(arg, "=") then
+                set pair to string_split(arg, "=")
+                set key_raw to element 0 of(pair)
+                set key to string_substring(key_raw, 2, length(key_raw) - 2)
+                set value to ""
+                if length(pair) is greater than 1 then
+                    set value to element 1 of(pair)
+                    if length(pair) is greater than 2 then
+                        set j to 2
+                        while j is less than length(pair)
+                            set value to value + "=" + element j of(pair)
+                            set j to j + 1
+                        endwhile
+                    endif
+                endif
+                add item key: value to(options)
+            otherwise
+                set key to string_substring(arg, 2, length(arg) - 2)
+                set used_next_value to false
+                if i + 1 is less than n then
+                    set next_arg to element (i + 1) of(args)
+                    if string_starts_with(next_arg, "-") is equal to false then
+                        add item key: next_arg to(options)
+                        set used_next_value to true
+                    endif
+                endif
+                if used_next_value then
+                    set i to i + 1
+                otherwise
+                    add key to(flags)
+                endif
+            endif
+        otherwise if string_starts_with(arg, "-") and length(arg) is greater than 1 then
+            set short_flag to string_substring(arg, 1, length(arg) - 1)
+            add short_flag to(flags)
+        otherwise
+            add arg to(positionals)
+        endif
+
+        set i to i + 1
+    endwhile
+
+    add item "options": options to(result)
+    add item "flags": flags to(result)
+    add item "positionals": positionals to(result)
+    return result
+endfunction
+
+create function cli.options(parsed)
+    return get item "options" from(parsed)
+endfunction
+
+create function cli.flags(parsed)
+    return get item "flags" from(parsed)
+endfunction
+
+create function cli.positionals(parsed)
+    return get item "positionals" from(parsed)
+endfunction
+
+create function cli.has.flag(parsed, flag_name)
+    return flag_name in(cli.flags(parsed))
+endfunction
+
+create function cli.get.option(parsed, option_name, default_value)
+    set options to cli.options(parsed)
+    if option_name in(options) then
+        return get item option_name from(options)
+    endif
+    return default_value
+endfunction
+
+create function cli.get.positional(parsed, index_value, default_value)
+    set idx to cast index_value to int
+    set pos to cli.positionals(parsed)
+    if idx is less than 0 then
+        return default_value
+    endif
+    if idx is greater than or equal to length(pos) then
+        return default_value
+    endif
+    return element idx of(pos)
+endfunction
+
+offer cli.parse
+offer cli.options
+offer cli.flags
+offer cli.positionals
+offer cli.has.flag
+offer cli.get.option
+offer cli.get.positional
+
+# underscore compatibility aliases
+create function cli_new_result()
+    return cli.new.result()
+endfunction
+create function cli_parse(args)
+    return cli.parse(args)
+endfunction
+offer cli_parse
+create function cli_options(parsed)
+    return cli.options(parsed)
+endfunction
+offer cli_options
+create function cli_flags(parsed)
+    return cli.flags(parsed)
+endfunction
+offer cli_flags
+create function cli_positionals(parsed)
+    return cli.positionals(parsed)
+endfunction
+offer cli_positionals
+create function cli_has_flag(parsed, flag_name)
+    return cli.has.flag(parsed, flag_name)
+endfunction
+offer cli_has_flag
+create function cli_get_option(parsed, option_name, default_value)
+    return cli.get.option(parsed, option_name, default_value)
+endfunction
+offer cli_get_option
+create function cli_get_positional(parsed, index_value, default_value)
+    return cli.get.positional(parsed, index_value, default_value)
+endfunction
+offer cli_get_positional
+end

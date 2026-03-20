@@ -1,0 +1,146 @@
+﻿start
+create library testing
+
+set test_state to {}
+add item "passed": 0 to(test_state)
+add item "failed": 0 to(test_state)
+add item "messages": [] to(test_state)
+
+create function test.reset()
+    add item "passed": 0 to(test_state)
+    add item "failed": 0 to(test_state)
+    add item "messages": [] to(test_state)
+    return true
+endfunction
+
+create function test.mark.pass(name)
+    add item "passed": get item "passed" from(test_state) + 1 to(test_state)
+    return true
+endfunction
+
+create function test.mark.fail(name, message)
+    add item "failed": get item "failed" from(test_state) + 1 to(test_state)
+    set messages to get item "messages" from(test_state)
+    add name + ": " + message to(messages)
+    add item "messages": messages to(test_state)
+    return true
+endfunction
+
+create function test.assert.true(condition, name)
+    if condition then
+        test.mark.pass(name)
+        return true
+    endif
+    test.mark.fail(name, "Condition was false.")
+    return false
+endfunction
+
+create function test.assert.equal(actual, expected, name)
+    if actual is equal to expected then
+        test.mark.pass(name)
+        return true
+    endif
+    test.mark.fail(name, "Values are not equal.")
+    return false
+endfunction
+
+create function test.assert.almost.equal(actual, expected, tolerance, name)
+    set a to cast actual to float
+    set e to cast expected to float
+    set t to cast tolerance to float
+    if t is less than 0.0 then
+        set t to -t
+    endif
+    set diff to a - e
+    if diff is less than 0.0 then
+        set diff to -diff
+    endif
+    if diff is less than t or diff is equal to t then
+        test.mark.pass(name)
+        return true
+    endif
+    test.mark.fail(name, "Difference exceeded tolerance.")
+    return false
+endfunction
+
+create function test.pass.count()
+    return get item "passed" from(test_state)
+endfunction
+
+create function test.fail.count()
+    return get item "failed" from(test_state)
+endfunction
+
+create function test.total.count()
+    return test.pass.count() + test.fail.count()
+endfunction
+
+create function test.messages()
+    return get item "messages" from(test_state)
+endfunction
+
+create function test.report()
+    print "passed:"
+    print test.pass.count()
+    print "failed:"
+    print test.fail.count()
+    for each msg in(test.messages())
+        print msg
+    endfor
+    return test.fail.count() is equal to 0
+endfunction
+
+offer test.reset
+offer test.assert.true
+offer test.assert.equal
+offer test.assert.almost.equal
+offer test.pass.count
+offer test.fail.count
+offer test.total.count
+offer test.messages
+offer test.report
+
+# underscore compatibility aliases
+create function test_reset()
+    return test.reset()
+endfunction
+offer test_reset
+create function test_mark_pass(name)
+    return test.mark.pass(name)
+endfunction
+create function test_mark_fail(name, message)
+    return test.mark.fail(name, message)
+endfunction
+create function test_assert_true(condition, name)
+    return test.assert.true(condition, name)
+endfunction
+offer test_assert_true
+create function test_assert_equal(actual, expected, name)
+    return test.assert.equal(actual, expected, name)
+endfunction
+offer test_assert_equal
+create function test_assert_almost_equal(actual, expected, tolerance, name)
+    return test.assert.almost.equal(actual, expected, tolerance, name)
+endfunction
+offer test_assert_almost_equal
+create function test_pass_count()
+    return test.pass.count()
+endfunction
+offer test_pass_count
+create function test_fail_count()
+    return test.fail.count()
+endfunction
+offer test_fail_count
+create function test_total_count()
+    return test.total.count()
+endfunction
+offer test_total_count
+create function test_messages()
+    return test.messages()
+endfunction
+offer test_messages
+create function test_report()
+    return test.report()
+endfunction
+offer test_report
+end

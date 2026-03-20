@@ -1,0 +1,270 @@
+﻿start
+create library table
+
+load library "math"
+take mean from math
+
+create function table.copy.row(row)
+    set out to {}
+    for each key in(row)
+        add item key: get item key from(row) to(out)
+    endfor
+    return out
+endfunction
+
+create function table.copy(rows)
+    set out to []
+    for each row in(rows)
+        add table.copy.row(row) to(out)
+    endfor
+    return out
+endfunction
+
+create function table.head(rows, count)
+    set n to cast count to int
+    set out to []
+    if n is less than or equal to 0 then
+        return out
+    endif
+
+    set size to length(rows)
+    if n is greater than size then
+        set n to size
+    endif
+
+    set i to 0
+    while i is less than n
+        add table.copy.row(element i of(rows)) to(out)
+        set i to i + 1
+    endwhile
+    return out
+endfunction
+
+create function table.select.columns(rows, columns)
+    set out to []
+    for each row in(rows)
+        set projected to {}
+        for each key in(columns)
+            if key in(row) then
+                add item key: get item key from(row) to(projected)
+            endif
+        endfor
+        add projected to(out)
+    endfor
+    return out
+endfunction
+
+create function table.filter.equals(rows, column, expected)
+    set out to []
+    for each row in(rows)
+        if column in(row) then
+            if get item column from(row) is equal to expected then
+                add table.copy.row(row) to(out)
+            endif
+        endif
+    endfor
+    return out
+endfunction
+
+create function table.numeric.value(row, column)
+    if column in(row) then
+        return cast get item column from(row) to float
+    endif
+    return 0.0
+endfunction
+
+create function table.filter.greater(rows, column, threshold)
+    set th to cast threshold to float
+    set out to []
+    for each row in(rows)
+        if column in(row) then
+            set value to cast get item column from(row) to float
+            if value is greater than th then
+                add table.copy.row(row) to(out)
+            endif
+        endif
+    endfor
+    return out
+endfunction
+
+create function table.filter.less(rows, column, threshold)
+    set th to cast threshold to float
+    set out to []
+    for each row in(rows)
+        if column in(row) then
+            set value to cast get item column from(row) to float
+            if value is less than th then
+                add table.copy.row(row) to(out)
+            endif
+        endif
+    endfor
+    return out
+endfunction
+
+create function table.sum(rows, column)
+    set total to 0.0
+    for each row in(rows)
+        if column in(row) then
+            set total to total + cast get item column from(row) to float
+        endif
+    endfor
+    return total
+endfunction
+
+create function table.mean(rows, column)
+    set values to []
+    for each row in(rows)
+        if column in(row) then
+            add cast get item column from(row) to float to(values)
+        endif
+    endfor
+    return mean(values)
+endfunction
+
+create function table.group.count(rows, column)
+    set groups to {}
+    for each row in(rows)
+        if column in(row) then
+            set key to get item column from(row)
+            try
+                if key in(groups) then
+                    add item key: get item key from(groups) + 1 to(groups)
+                otherwise
+                    add item key: 1 to(groups)
+                endif
+            otherwise
+            endtry
+        endif
+    endfor
+    return groups
+endfunction
+
+create function table.sort.by.number(rows, column, ascending)
+    set out to table.copy(rows)
+    set n to length(out)
+    set i to 1
+    while i is less than n
+        set current to element i of(out)
+        set current_value to table.numeric.value(current, column)
+        set j to i - 1
+        set keep_shifting to true
+
+        while keep_shifting and j is greater than or equal to 0
+            set prev to element j of(out)
+            set prev_value to table.numeric.value(prev, column)
+            set should_shift to false
+            if ascending then
+                if prev_value is greater than current_value then
+                    set should_shift to true
+                endif
+            endif
+            if ascending is equal to false then
+                if prev_value is less than current_value then
+                    set should_shift to true
+                endif
+            endif
+
+            if should_shift then
+                set element (j + 1) of(out) to prev
+                set j to j - 1
+            endif
+            if should_shift is equal to false then
+                set keep_shifting to false
+            endif
+        endwhile
+
+        set element (j + 1) of(out) to current
+        set i to i + 1
+    endwhile
+    return out
+endfunction
+
+create function table.inner.join(left_rows, right_rows, left_key, right_key, right_prefix)
+    set out to []
+    for each left_row in(left_rows)
+        if left_key in(left_row) then
+            set left_value to get item left_key from(left_row)
+            for each right_row in(right_rows)
+                if right_key in(right_row) then
+                    if get item right_key from(right_row) is equal to left_value then
+                        set joined to table.copy.row(left_row)
+                        for each key in(right_row)
+                            set target_key to key
+                            if target_key in(joined) then
+                                set target_key to right_prefix + key
+                            endif
+                            add item target_key: get item key from(right_row) to(joined)
+                        endfor
+                        add joined to(out)
+                    endif
+                endif
+            endfor
+        endif
+    endfor
+    return out
+endfunction
+
+offer table.copy
+offer table.head
+offer table.select.columns
+offer table.filter.equals
+offer table.filter.greater
+offer table.filter.less
+offer table.sum
+offer table.mean
+offer table.group.count
+offer table.sort.by.number
+offer table.inner.join
+
+# underscore compatibility aliases
+create function table_copy_row(row)
+    return table.copy.row(row)
+endfunction
+create function table_copy(rows)
+    return table.copy(rows)
+endfunction
+offer table_copy
+create function table_head(rows, count)
+    return table.head(rows, count)
+endfunction
+offer table_head
+create function table_select_columns(rows, columns)
+    return table.select.columns(rows, columns)
+endfunction
+offer table_select_columns
+create function table_filter_equals(rows, column, expected)
+    return table.filter.equals(rows, column, expected)
+endfunction
+offer table_filter_equals
+create function table_numeric_value(row, column)
+    return table.numeric.value(row, column)
+endfunction
+create function table_filter_greater(rows, column, threshold)
+    return table.filter.greater(rows, column, threshold)
+endfunction
+offer table_filter_greater
+create function table_filter_less(rows, column, threshold)
+    return table.filter.less(rows, column, threshold)
+endfunction
+offer table_filter_less
+create function table_sum(rows, column)
+    return table.sum(rows, column)
+endfunction
+offer table_sum
+create function table_mean(rows, column)
+    return table.mean(rows, column)
+endfunction
+offer table_mean
+create function table_group_count(rows, column)
+    return table.group.count(rows, column)
+endfunction
+offer table_group_count
+create function table_sort_by_number(rows, column, ascending)
+    return table.sort.by.number(rows, column, ascending)
+endfunction
+offer table_sort_by_number
+create function table_inner_join(left_rows, right_rows, left_key, right_key, right_prefix)
+    return table.inner.join(left_rows, right_rows, left_key, right_key, right_prefix)
+endfunction
+offer table_inner_join
+end

@@ -1,0 +1,288 @@
+﻿start
+create library random
+
+set rand_modulus to 2147483647
+set rand_multiplier to 16807
+set rand_q to 127773
+set rand_r to 2836
+set rand_context to {}
+add item "state": 1 to(rand_context)
+
+create function rand.mod.int(a, b)
+    set ai to cast a to int
+    set bi to cast b to int
+    if bi is less than or equal to 0 then
+        return 0
+    endif
+    set q to ai / bi
+    set m to ai - q * bi
+    if m is less than 0 then
+        return m + bi
+    endif
+    return m
+endfunction
+
+create function rand.seed(seed)
+    set s to cast seed to int
+    if s is less than 0 then
+        set s to -s
+    endif
+    set s to rand.mod.int(s, rand_modulus)
+    if s is equal to 0 then
+        set s to 1
+    endif
+    add item "state": s to(rand_context)
+    return s
+endfunction
+
+create function rand.next.int()
+    set state to get item "state" from(rand_context)
+    set hi to state / rand_q
+    set lo to state - hi * rand_q
+    set test to rand_multiplier * lo - rand_r * hi
+    if test is less than or equal to 0 then
+        set test to test + rand_modulus
+    endif
+    add item "state": test to(rand_context)
+    return test
+endfunction
+
+create function rand.float()
+    return cast rand.next.int() to float / cast rand_modulus to float
+endfunction
+
+create function rand.float.range(min_value, max_value)
+    set lo to cast min_value to float
+    set hi to cast max_value to float
+    if hi is less than lo then
+        set t to lo
+        set lo to hi
+        set hi to t
+    endif
+    return lo + (hi - lo) * rand.float()
+endfunction
+
+create function rand.int(min_value, max_value)
+    set lo to cast min_value to int
+    set hi to cast max_value to int
+    if hi is less than lo then
+        set t to lo
+        set lo to hi
+        set hi to t
+    endif
+    set span to hi - lo + 1
+    if span is less than or equal to 0 then
+        return lo
+    endif
+    set offset to rand.mod.int(rand.next.int(), span)
+    return lo + offset
+endfunction
+
+create function rand.bool(probability)
+    set p to cast probability to float
+    if p is less than or equal to 0.0 then
+        return false
+    endif
+    if p is greater than or equal to 1.0 then
+        return true
+    endif
+    return rand.float() is less than p
+endfunction
+
+create function rand.choice(values)
+    set n to length of(values)
+    if n is less than or equal to 0 then
+        return 0
+    endif
+    return element rand.int(0, n - 1) of(values)
+endfunction
+
+create function rand.shuffle(values)
+    set out to []
+    for each v in(values)
+        add v to(out)
+    endfor
+
+    set i to length of(out) - 1
+    while i is greater than 0
+        set j to rand.int(0, i)
+        set a to element i of(out)
+        set b to element j of(out)
+        set element i of(out) to b
+        set element j of(out) to a
+        set i to i - 1
+    endwhile
+    return out
+endfunction
+
+create function rand.sample(values, count)
+    set k to cast count to int
+    if k is less than or equal to 0 then
+        return []
+    endif
+
+    set shuffled to rand.shuffle(values)
+    set n to length of(shuffled)
+    if k is greater than n then
+        set k to n
+    endif
+
+    set out to []
+    set i to 0
+    while i is less than k
+        add element i of(shuffled) to(out)
+        set i to i + 1
+    endwhile
+    return out
+endfunction
+
+create function rand.state.value()
+    return get item "state" from(rand_context)
+endfunction
+
+create function random.seed(seed)
+    return rand.seed(seed)
+endfunction
+
+create function random.next.integer()
+    return rand.next.int()
+endfunction
+
+create function random.float()
+    return rand.float()
+endfunction
+
+create function random.float.between(min_value, max_value)
+    return rand.float.range(min_value, max_value)
+endfunction
+
+create function random.int.between(min_value, max_value)
+    return rand.int(min_value, max_value)
+endfunction
+
+create function random.boolean(probability)
+    return rand.bool(probability)
+endfunction
+
+create function random.pick(values)
+    return rand.choice(values)
+endfunction
+
+create function random.shuffle(values)
+    return rand.shuffle(values)
+endfunction
+
+create function random.sample(values, count)
+    return rand.sample(values, count)
+endfunction
+
+create function random.state()
+    return rand.state.value()
+endfunction
+
+offer rand.seed
+offer rand.next.int
+offer rand.float
+offer rand.float.range
+offer rand.int
+offer rand.bool
+offer rand.choice
+offer rand.shuffle
+offer rand.sample
+offer rand.state.value
+offer random.seed
+offer random.next.integer
+offer random.float
+offer random.float.between
+offer random.int.between
+offer random.boolean
+offer random.pick
+offer random.shuffle
+offer random.sample
+offer random.state
+
+# underscore compatibility aliases
+create function rand_mod_int(a, b)
+    return rand.mod.int(a, b)
+endfunction
+create function rand_seed(seed)
+    return rand.seed(seed)
+endfunction
+offer rand_seed
+create function rand_next_int()
+    return rand.next.int()
+endfunction
+offer rand_next_int
+create function rand_float()
+    return rand.float()
+endfunction
+offer rand_float
+create function rand_float_range(min_value, max_value)
+    return rand.float.range(min_value, max_value)
+endfunction
+offer rand_float_range
+create function rand_int(min_value, max_value)
+    return rand.int(min_value, max_value)
+endfunction
+offer rand_int
+create function rand_bool(probability)
+    return rand.bool(probability)
+endfunction
+offer rand_bool
+create function rand_choice(values)
+    return rand.choice(values)
+endfunction
+offer rand_choice
+create function rand_shuffle(values)
+    return rand.shuffle(values)
+endfunction
+offer rand_shuffle
+create function rand_sample(values, count)
+    return rand.sample(values, count)
+endfunction
+offer rand_sample
+create function rand_state_value()
+    return rand.state.value()
+endfunction
+offer rand_state_value
+create function random_seed(seed)
+    return random.seed(seed)
+endfunction
+offer random_seed
+create function random_next_integer()
+    return random.next.integer()
+endfunction
+offer random_next_integer
+create function random_float()
+    return random.float()
+endfunction
+offer random_float
+create function random_float_between(min_value, max_value)
+    return random.float.between(min_value, max_value)
+endfunction
+offer random_float_between
+create function random_int_between(min_value, max_value)
+    return random.int.between(min_value, max_value)
+endfunction
+offer random_int_between
+create function random_boolean(probability)
+    return random.boolean(probability)
+endfunction
+offer random_boolean
+create function random_pick(values)
+    return random.pick(values)
+endfunction
+offer random_pick
+create function random_shuffle(values)
+    return random.shuffle(values)
+endfunction
+offer random_shuffle
+create function random_sample(values, count)
+    return random.sample(values, count)
+endfunction
+offer random_sample
+create function random_state()
+    return random.state()
+endfunction
+offer random_state
+end
