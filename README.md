@@ -1,3 +1,8 @@
+[![Latest Release](https://img.shields.io/github/v/release/Gothardener/sichtlang?label=latest%20release)](https://github.com/Gothardener/sichtlang/releases)
+[![Downloads](https://img.shields.io/github/downloads/Gothardener/sichtlang/total?label=downloads)](https://github.com/Gothardener/sichtlang/releases)
+[![License](https://img.shields.io/github/license/Gothardener/sichtlang)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-Windows%20|%20Linux-blue)](https://github.com/Gothardener/sichtlang/releases)
+
 # Sicht
 
 Sicht is an English‑style programming language with a native compiler and a built‑in package manager (Annex).  
