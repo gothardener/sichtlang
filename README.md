@@ -21,6 +21,7 @@ It’s designed to be readable, fast, and practical for real projects.
 Download the installer from Releases and run it.
 
 **Linux (Debian/Ubuntu/Mint)**  
+Download the .deb package from releases, then
 ```bash
 sudo dpkg -i sicht_1.0.0_amd64.deb
 source /etc/profile.d/sicht.sh
