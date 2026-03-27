@@ -10,7 +10,7 @@ It’s designed to be readable, fast, and practical for real projects.
 
 ## Its features
 - Simple English‑style syntax
-- Interpreter + native compile (`sicht compile`)
+- Interpreter + Interpreter bundling compile (`sicht compile`)
 - Annex package manager included
 - Windows installer + Linux `.deb` releases
 - Low‑level mode (`llvl`) when needed
