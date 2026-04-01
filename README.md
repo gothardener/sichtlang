@@ -5,11 +5,11 @@
 
 # Sicht
 
-Sicht is an English‑style programming language with a native compiler and a built‑in package manager (Annex).  
+Sicht is an English‑style programming language with an "interpreter bundler" compiler and a built in package manager (Annex).  
 It’s designed to be readable, fast, and practical for real projects.
 
 ## Its features
-- Simple English‑style syntax
+- Simple English style syntax
 - Interpreter + Interpreter bundling compile (`sicht compile`)
 - Annex package manager included
 - Windows installer + Linux `.deb` releases
